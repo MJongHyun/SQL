@@ -1,0 +1,222 @@
+# package
+
+관련성있는 서브프로그램(프로시저,함수), 변수(global), 타입을 모아놓은 프로그램
+
+1. spec(public) -- begin 절이 없다. 필수절이다. 선언만 하는 곳이다. 생성자라고 한다.
+create or replace package comm_pkg
+is
+	g_comm number := 0.1; -- global 변수가 된다.
+	procedure reset_comm(p_comm in number); /* procedure 프로시저이름(형식매개변수 기술 <필요하면 쓰고 필요없으면 쓰지않는다.>) */
+	
+end comm_pkg;
+/
+
+exec dbms_output.put_line(comm_pkg.g_comm); -- 실행하면 전역변수로 되므로 값이 나온다.
+
+2. body(private) -- begin 절은 선택절이다. spec에서 선언한 프로시저/함수를 실제소스를 구현한다. 
+
+create or replace package body comm_pkg 
+is
+	function validate_comm(v_comm in number) -- 함수를 body에서 만든것은 session 밖에선 사용하는 것이 불가능하다.
+		return boolean				그래서 함수를 사용해야 할 경우 body에서 사용하여 보안성을 유지하는 경우도 있다.
+	is 
+		v_max_comm number;
+	begin
+		select max(commission_pct)
+		into v_max_comm
+		from employees;
+		if v_comm > v_max_comm then
+			return FALSE;
+		else 
+			return TRUE;
+		end if;
+	end validate_comm;	-- 반드시 end 하고 프로시저이름/함수이름을 쓰는 연습을 하자. / 구분을 하기 어려우므로
+
+
+	procedure reset_comm(p_comm in number)
+	is 
+	begin
+		if validate_comm(p_comm) then -- 여길보면 함수를 사용하였는데 함수를 사용하려면 이 프로시저보다 위에서 정의를 해야한다. 아니면 이 패키지 밖에서 함수가 정의가 되어있어야한다.
+			dbms_output.put_line('old :' || g_comm);
+			g_comm := p_comm;
+			dbms_output.put_line('new :' || g_comm);
+		else
+			raise_application_error(-20000,'invalid');
+		end if;
+	end reset_comm;
+end comm_pkg;
+/	 
+
+# 컴파일 순서 : spec -> body
+
+SQL> exec comm_pkg.reset_comm(0.2)
+old :.1
+new :.2
+
+SQL> exec dbms_output.put_line(comm_pkg.g_comm); --패키지이름.프로시저이름
+.2
+
+# 다른 세션 (다른창)
+SQL> exec dbms_output.put_line(comm_pkg.g_comm);
+.1
+
+# ★★★바인드 변수이든 패키지에서 선언한 전역변수든 값을 변화는 그 해당 세션에서만 해당이 된다.
+
+exec comm_pkg.g_comm := 0.25 -- session 에서 변수값은 변경이 가능하다.
+
+exec comm_pkg.reset_comm(0.35);
+old :.25
+new :.35
+
+# 다른창 
+exec comm_pkg.reset_comm(0.15);
+old :.1
+new :.15
+
+# 위치 변경에도 해결하는 방법 : 함수절에서 is 절 위에부분까지만 복사를 한 후에 값을 올려서 사용하면 가능하다.
+
+create or replace package body comm_pkg 
+is
+	function validate_comm(v_comm in number) 
+		return boolean;	-- ; 필수 ★
+	
+	procedure reset_comm(p_comm in number)
+	is 
+	begin
+		if validate_comm(p_comm) then 
+			dbms_output.put_line('old :' || g_comm);
+			g_comm := p_comm;
+			dbms_output.put_line('new :' || g_comm);
+		else
+			raise_application_error(-20000,'invalid');
+		end if;
+	end reset_comm;
+
+	function validate_comm(v_comm in number) 
+		return boolean	
+	is 
+		v_max_comm number;
+	begin
+		select max(commission_pct)
+		into v_max_comm
+		from employees;
+		if v_comm > v_max_comm then
+			return FALSE;
+		else 
+			return TRUE;
+		end if;
+	end validate_comm;
+end comm_pkg;
+/	 
+
+# 따로따로 만들어도 되는데 왜 패키지를 사용할까 : 종속관계를 조금 더 편리하게 관리하기 위해 사용.
+
+create or replace function validate_comm
+(v_comm in number) 
+return boolean	
+is 
+	v_max_comm number;
+begin
+	select max(commission_pct)
+	into v_max_comm
+	from employees;
+	if v_comm > v_max_comm then
+		return FALSE;
+	else 
+		return TRUE;
+	end if;
+end validate_comm;
+/
+
+create or replace procedure reset_comm
+(p_comm in number)
+is 
+	g_comm number := 0.1;
+begin
+		if validate_comm(p_comm) then 
+			dbms_output.put_line('old :' || g_comm);
+			g_comm := p_comm;
+			dbms_output.put_line('new :' || g_comm);
+		else
+			raise_application_error(-20000,'invalid');
+		end if;
+end reset_comm;
+/
+
+SQL> exec reset_comm(0.2)
+old :.1
+new :.2
+
+SQL> exec reset_comm(0.3) -- 세션에 지속적으로 사용되지 않고 로컬변수 이기 때문에 이값에서는 유지가 되어있다.(변경되지 않는다.)
+old :.1
+new :.3
+
+
+# 1개만 관리해야하는걸 계속 2개로 관리를 해야하고, 종속관계에 놓이기 때문에 하나를 수정 하였을 때 다른것도 영향을 주어서 실행이 되지 않을 수도 있다.
+
+# overloading
+- 동일한 이름의 프로시저, 함수를 만들 수 있다. 
+- 조건: 형식 매개변수의 갯수가 다르거나 모드 (in/out)가 다르거나, type가 달라야 가능하다.
+- 객체 프로그램의 장점이다.
+
+to_char(날짜,문자)
+         
+to_char(숫자,문자)
+     
+# spec 에서 선언한 타입도 프로그램 밖에서도 사용이 가능하다.
+
+create or replace package pack_over
+is 
+	type date_tab_type is table of date index by pls_integer;
+	type num_tab_type is table of number index by pls_integer;
+
+	procedure init(tab out date_tab_type, n number); -- 형식이 다르게 때문에 가능하다.
+	procedure init(tab out num_tab_type,n number);
+end pack_over;
+/
+
+
+create or replace package body pack_over
+is
+	procedure init(tab out date_tab_type, n number) -- 배열로 값을 받아야 한다.
+	is
+	begin
+		for i in 1..n loop
+			tab(i) := sysdate;
+		end loop;
+	end;
+
+	procedure init(tab out num_tab_type, n number)
+	is
+	begin 
+		for i in 1..n loop
+			tab(i) := i;
+		end loop;
+	end init;
+end pack_over;
+/
+
+declare
+	date_tab pack_over.date_tab_type; 
+	num_tab  pack_over.num_tab_type;
+begin
+	pack_over.init(date_tab,5);-- 같은 이름이라 하더라도 타입에 따라 값이 변하는걸 볼 수 있다.
+	pack_over.init(num_tab,5);
+	for i in 1..5 loop
+		dbms_output.put_line(date_tab(i));
+		dbms_output.put_line(num_tab(i));
+	end loop;
+end;
+/
+
+18/07/17
+1
+18/07/17
+2
+18/07/17
+3
+18/07/17
+4
+18/07/17
+5
+

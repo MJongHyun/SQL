@@ -1,0 +1,190 @@
+
+select /*+ gather_plan_statistics  */ count(*) from emp where lower(last_name)='king'; - 대소문자 구분 없다고 가정
+
+# 함수 기반 index - 함수도 포함에서 만드는 index, 늘 상 값이 함수와 적용해야 한다면 index에 함수를 포함해서 만든다.
+
+create index emp_lower_name_idx on emp(lower(last_name));
+
+create index 인덱스이름 on 테이블이름(함수(열));
+
+Plan hash value: 2946388071
+ 
+--------------------------------------------------------------------------------------------------
+| Id  | Operation         | Name               | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |                    |      1 |        |      1 |00:00:00.01 |       3 |
+|   1 |  SORT AGGREGATE   |                    |      1 |      1 |      1 |00:00:00.01 |       3 |
+|*  2 |   INDEX RANGE SCAN| EMP_LOWER_NAME_IDX |      1 |    107 |    200 |00:00:00.01 |       3 |
+--------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("E"."SYS_NC00010$"='king')
+
+select * from user_indexes where table_name='EMP'; -- index기반이 function_Based normal로 잡힌다.
+
+select * from user_ind_columns where table_name='EMP'; -- 함수기반 index를 사용하면 column_name이 자동으로 생성된다.
+
+select * from user_ind_expressions where table_name='EMP'; --함수기반 index 확인가능 
+
+예) where salary*12=90000 (salary가 index가 걸려 있다면, 다른 index로 하지 못하니까 함수기반 index로는 가능하다)
+    그러나 where salary=90000/12 로 한다면 이상이 없다.
+
+# clustering factor - index를 scan하는 동안에 access하게 되는 테이블의 block의 수를 의미한다.
+
+create table c_table 
+as select * from all_objects order by object_id; -- range column 기준으로 해서 순서대로 저장하도록 함 ( clustering을 좋게 하기 위해서)
+
+create index c_obj_idx on c_table(object_id);
+
+create index c_obj_name_idx on c_table(object_name);
+
+execute dbms_stats.gather_table_stats('hr','c_table') -- 통계값을 주기 위해서 execute 실행
+select num_rows,blocks from user_tables where table_name='C_TABLE'; -- 테이블의 총 block 수 
+
+select index_name,leaf_blocks, clustering_factor from user_indexes where table_name='C_TABLE'; -- field값의 rowid를 가지고 있는수 (leaf_blocks 의 의미)
+
+index name     leaf_blocks clustering_factor
+------------------------------------   ---
+C_OBJ_IDX	16	96
+C_OBJ_NAME_IDX	30	3037
+
+select /*+ gather_plan_statistics index(c c_obj_idx) */ count(*) 
+from c_table c
+where object_id>=0 and object_name>' '; 
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+SQL_ID  dnakt77bdwwfy, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics index(c c_obj_idx) */ count(*)  from 
+c_table c where object_id>=0 and object_name>' '
+ 
+Plan hash value: 1213134236
+ 
+----------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name      | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+----------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |           |      1 |        |      1 |00:00:00.01 |     113 |
+|   1 |  SORT AGGREGATE              |           |      1 |      1 |      1 |00:00:00.01 |     113 |
+|*  2 |   TABLE ACCESS BY INDEX ROWID| C_TABLE   |      1 |   7325 |   7325 |00:00:00.01 |     113 |
+|*  3 |    INDEX RANGE SCAN          | C_OBJ_IDX |      1 |   7325 |   7325 |00:00:00.01 |      17 |
+----------------------------------------------------------------------------------------------------
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter("OBJECT_NAME">' ')
+   3 - access("OBJECT_ID">=0)
+
+113-17 96 -> clustering 값과 같다.
+
+select /*+ gather_plan_statistics index(c c_obj_name_idx) */ count(*) 
+from c_table c
+where object_id>=0 and object_name>' '; 
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+ 
+SQL_ID  da0q026y9cghd, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics index(c c_obj_name_idx) */ count(*)  
+from c_table c where object_id>=0 and object_name>' '
+ 
+Plan hash value: 586128974
+ 
+---------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name           | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+---------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                |      1 |        |      1 |00:00:00.01 |    3068 |
+|   1 |  SORT AGGREGATE              |                |      1 |      1 |      1 |00:00:00.01 |    3068 |
+|*  2 |   TABLE ACCESS BY INDEX ROWID| C_TABLE        |      1 |   7325 |   7325 |00:00:00.01 |    3068 |
+|*  3 |    INDEX RANGE SCAN          | C_OBJ_NAME_IDX |      1 |   7325 |   7325 |00:00:00.01 |      31 |
+---------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter("OBJECT_ID">=0)
+   3 - access("OBJECT_NAME">' ')
+ 
+3068-31 = 3037 -> clustering 값과 같다.
+
+즉, clustering 계산 table access 한 값 - index range scan 한 값 이다.
+
+값이 적을 수록 range scan에 좋은 것이고, buffer pin을 통해 값이 잘돌아가고 있다는 것을 알 수 있다. 
+
+★★ 무조건 name을 써야한다고 한다면 c_tas로 해결을 해야한다. (왜냐하면 위에서는 order by를 object_id로 하였기 때문이다.)
+
+
+create table c_tablez
+as select * from all_objects order by object_name;
+
+create index cc_obj_idx on c_tablez(object_id);
+create index cc_obj_name_idx on c_tablez(object_name);
+
+execute dbms_stats.gather_table_stats('hr','c_tablez');
+
+select index_name,leaf_blocks, clustering_factor from user_indexes where table_name='C_TABLEZ';
+CC_OBJ_IDX	16	3720
+CC_OBJ_NAME_IDX	31	96
+
+select num_rows,blocks from user_tables where table_name='C_TABLEZ';
+7329 105
+
+select /*+ gather_plan_statistics index(c cc_obj_name_idx) */ count(*) 
+from c_tablez c
+where object_id>=0 and object_name>' '; 
+
+SQL_ID  38xc53yap3zq2, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics index(c cc_obj_name_idx) */ count(*)  
+from c_tablez c where object_id>=0 and object_name>' '
+ 
+Plan hash value: 877325994
+ 
+----------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name            | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+----------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                 |      1 |        |      1 |00:00:00.01 |     128 |
+|   1 |  SORT AGGREGATE              |                 |      1 |      1 |      1 |00:00:00.01 |     128 |
+|*  2 |   TABLE ACCESS BY INDEX ROWID| C_TABLEZ        |      1 |   7329 |   7329 |00:00:00.01 |     128 |
+|*  3 |    INDEX RANGE SCAN          | CC_OBJ_NAME_IDX |      1 |   7329 |   7329 |00:00:00.01 |      32 |
+----------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter("OBJECT_NAME">' ')
+   3 - access("OBJECT_ID">=0)
+
+128-32 = 96
+
+select /*+ gather_plan_statistics index(c cc_obj_idx) */ count(*) 
+from c_tablez c
+where object_id>=0 and object_name>' '; 
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+SQL_ID  9094pyzzjvspa, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics index(c cc_obj_idx) */ count(*)  from 
+c_tablez c where object_id>=0 and object_name>' '
+ 
+Plan hash value: 420604006
+ 
+-----------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name       | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-----------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |            |      1 |        |      1 |00:00:00.01 |    3737 |
+|   1 |  SORT AGGREGATE              |            |      1 |      1 |      1 |00:00:00.01 |    3737 |
+|*  2 |   TABLE ACCESS BY INDEX ROWID| C_TABLEZ   |      1 |   7329 |   7329 |00:00:00.01 |    3737 |
+|*  3 |    INDEX RANGE SCAN          | CC_OBJ_IDX |      1 |   7329 |   7329 |00:00:00.01 |      17 |
+-----------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter("OBJECT_NAME">' ')
+   3 - access("OBJECT_ID">=0)
+
+3737-17 = 3720

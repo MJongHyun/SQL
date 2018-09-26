@@ -1,0 +1,248 @@
+# 하나의 테이블을 보면 그걸로 해결 하려고 하는 것이 기능에 좋다.
+
+# User 생성
+
+# 권한 : 특정한 SQL문을 수행 할 수 있는 권리를 의미한다. 
+      
+1. 시스템 권한(prvilige) - Oracle DB에 영향을 주는 권한
+
+2. 객체 권한 -- 객체에만 영향을 주는 권한
+
+select * from session_privs; --내가 받은 system 권한을 알 수 있다. (user_sys_privs union role_sys_privs)
+
+# 필요한 이유: 회사에서 user을 주기 때문에 반드시 select * from session_privs; 을 통해 확인한다.
+
+create session: 가장 중요한 세션, 접속을 가능하게 해주는 세션
+
+# 또 다른 시스템권한 확인 방법 -- 직접권한을 확인하는 방법, DBA로 부터 시스템권한을 받아 그 직접받은 권한을 확인하는 방법
+select * from user_sys_privs;
+
+# 공통적 권한(role)을 확인시켜주는 방법 , role 이란 개발자에게 필요한 권한들의 집합을 의미
+select * from session_roles;
+
+# 롤 안에 들어 있는 시스템권한 확인
+select * from role_sys_privs;
+
+# 내가 받은 객체권한과 내가 부여한 객체 권한에 대한 정보를 확인하는 방법
+select * from user_tab_privs; 
+
+# EXECUTE : 통계 권한을 사용할 수 있게 해주는 권한, package(관련성있는 프로그램이 모여있는 것을 의미) 일부
+
+# 내가 받은 role 안에 들어 있는 객체 권한에 대한 정보를 확인하는 방법
+select * from role_tab_privs; 
+
+show user
+
+# user 생성은 hr 에선 힘들기 때문에 dba에 접속해야한다. 
+접속이름 : dba (아무이름 상관없음) 사용자이름 : sys 비밀번호 : oracle (비밀번호저장) role: SYSDBA (SYS계정만 반드시)
+
+# DBA에서 확인하는방법
+
+ # 시스템권한을 어떤 유저한테 부여했는지 확인 시켜주는 정보
+select * from dba_sys_privs;
+
+# 객체 권한을 어떤 유저한테 부여했는지 확인 시켜주는 정보
+select * from dba_tab_privs;
+
+# db에 롤에 대한 정보 
+select * from dba_roles; 
+
+# 롤을 어떤 유저한테 부여했는지 정보
+select * from dba_roles_privs ;
+
+SQL PLUS 에선
+
+SQL> conn sys/oracle as sysdba
+
+# DB에 생성되어 잇는 유저 정보 확인방법 
+select * from dba_users; 
+
+--hr 은 테이블 생성하려고 하면 아무대나 생성하면 안되기 때문에 USER 라는 곳만 가능하도록 막아놓는다.
+
+# tablespace 정보를 확인, 테이블에서  TEMP 까지는 필수 값이다. UNDO 는 이전값을 저장해놓은 공간을 의미.(휴지통 같은 의미)
+select * from dba_tablespaces;
+
+# SYSTEM TABLE에 USERS 모든 정보가 저장되어 있고 , SYSAUX SYSTEM 테이블을 튜닝해주는 공간이다.
+
+# 물리적인 저장 공간 정보를 확인하는 방법
+select * from dba_data_files; 
+
+# 실제 데이터 저장 방법
+DATABASE(논리적)           OS(물리적)
+
+tablespace -----                    data file 
+
+segment(table) - 테이블을 생성할 땐 quota 값과 시스템권한을 줘야 한다. 그리고 반드시 tablespace를 지정해야한다.
+
+extent
+
+block         -----                    os block
+
+HR 계정에서 접속
+
+select * from user_tables;
+
+SYS 계정에서 접속
+
+# 유저를 생성하는 방법
+
+create user olap ---- 유서 및 이름 생성
+identified by oracle  --- 패스워드 지정
+default tablespace users ----  tablespace 공간 지정 (users)
+temporary tablespace temp ---- temp 지정 (임시공간)
+quota 10m on users; ---- 쿼터 10M byte 사용가능 (권리를 준다), 쿼터값을 부여해야 tablespace에서 사용 가능한다.
+
+# 유저 수정방법
+
+alter: 수정하는 방법!
+
+alter user olap 
+identified by oracle  
+default tablespace users 
+temporary tablespace temp 
+quota 10m on users;
+
+select * from dba_users; - user 생성 확인
+select * from dba_ts_quotas; - 용량 확인 
+
+권한부여를 하지 않으면 접속이 불가능 하기 때문에 권한 부여를 해야한다.
+
+# 권한 부여
+ grant create session to olap;
+
+# 권한 부여한 정보를 확인하는 방법
+select * from dba_sys_privs where grantee='OLAP'; (반드시 대문자로 적음)
+
+# 권한을 회수하는 방법
+revoke create session from olap;
+
+# 권한 확인
+select * from session_privs;
+
+olap 계정
+
+★★ (꼭) table을 생성하려면 두가지 권한이 필요하다.
+
+1. 시스템 권한 : create table
+ select from session_privs; -- 확인방법
+2. tablespace 를 사용할 수 있는 권한 (저장공간 )
+ select * from user_ts_quotas; -- :
+
+grant create session from olap; - 시스템 권한을 줌
+
+select * from session_privs; - 권한 후 확인
+
+ grant create table to olap; - 테이블 권한
+
+# table 생성을 하려면 create table 명령을 받아야 하고 특정한 tablespce를 권한을 받아야 가능하다.
+
+OLAP 창
+
+select * from user_users; - 사용자 정보 확인
+
++ 누르고 olap olap oracle 하면 접속이 된다( oracle sql developer에서)
+create table test(id number); - 테이블space를 지정하지 않음
+
+-- 뒤에 tablespace 지정하지 않으면 자동으로 되도록 defalut 지정
+
+-- 예를 들면 nate 메일함에 저장할수 있는 크기가 tablespace 이다.
+
+create table test1(id number) tablespace users; 객체 이름(segment)은 똑같은거 쓸수 없어서 test1을 씀
+
+tablespaces는 반드시 써주는 습관을 써줘야 어디로 저장되는지 확인을 할 수 있다.
+
+drop table 테이블이름 purge ;--- 테이블 삭제, purge 옵션을 쓰지 않으면 휴지통같은 곳에 저장이 된다. purge는 완전삭제 
+
+create table emp
+(id number(4),name varchar2(20),day date) --날짜 date type에는 크기설정 불가 정해져 있음
+tablespace users;
+
+select * from emp;
+
+# INSERT
+새로운 ROW를 저장하는 명령문
+
+desc emp
+
+insert into emp(id,name,day)
+values(1,'홍길동',to_date('2018-06-11','yyyy-mm-dd'));
+
+insert into 테이블이름(테이블 컬럼들)
+values(타입에 맞는 값들<각 컬럼에 대응되게 값을 저장한다.>) 
+날짜를 적을 땐 나라마다 다르기 때문에 to_date를 통해 나타낸다.
+
+run sql에서 보면 확인이 되지 않는데 이유는 영구히 저장을 한것이 아니기 때문이다.
+
+그래서 rollback 을 한 후 확인을 하면 값이 다 없어져 있다.
+
+rollback;
+
+그러므로 영구히 저장하고 싶다면 commit을 실행하면 된다. (commit을 해놨으면 rollback을 해도 돌아가지 않는다.)
+
+commit;
+
+insert into emp(id,name,day)
+values(2,'박찬호',sysdate);
+
+# NULL를 넣는방법
+
+insert into emp(id,name,day)
+values(3,'박지성',null); --직접 넣는 방법
+
+insert into emp(id,name)
+values(4,'차두리'); --값을 비워 놓는다. 값은 반드시 대응해서 넣어야 한다.
+
+★ 신규 row행은 하나씩 넣을 수 밖에 없다.
+
+insert into emp
+values(5,'손흥민',sysdate); -- 컬럼리스트를 넣지 않아도 수행은 된다. 그러나, 좋지 않은 방법이므로 반드시 컬럼리스트를 적는 것이 좋다.
+
+# sys창
+
+# 유저삭제
+
+select * from v$session where username='OLAP'; -- 'OLAP'을 보는 상태
+
+# session kill 방법
+
+alter system kill session 'sid값,serial값' immediate;
+
+alter system kill session '6,91'immediate;
+alter system kill session '160,217'immediate;
+
+다시 conn olap/oracle 할 경우 연결이 되고
+v$session (view 값이 생성된다)
+
+drop user olap; -- 삭제가 안되는 이유 1. 접속한 상태 일 때 2. object가 있을 경우
+
+이렇게 되서 안되는 이유는 object를 다 지우지 않고 실행 했기 때문에 그렇다 따라서 그냥 다 지우고 싶다면 cascade를 사용한다.
+
+drop user olap cascade;
+
+# olap 계정
+
+create table emp_new --이름이 같은 object는 생성이 안된다.
+(id number(4), name varchar2(20), day date)
+tablespace users;
+
+# 테이블을 복사하는 방법, 복제 할땐 반드시 복제하는 타입과 복제당하는 타입이 같아야 복제가 가능하다!
+
+insert into emp_new(id,name,day)
+select * from emp;
+
+rollback 하면 없어져 있다. 즉, 완전한 저장이 아니다. 그러므로 commit을 해야한다.
+
+# purge 하면 table이 쓰레기통으로 가지 않고 바로 삭제한다.
+
+drop table emp_new purge;
+
+★ 테이블을 만들고 옮기는 것이 아니라 바로 통 째로 옮기고 싶을 때 하는 방법
+
+create table emp_new
+as select * from emp; -- 테이블 구조 그대로 (row까지 모두)  복사하는 방법, 이것은 rollback 하지 않는다.
+
+# 만약 뼈대만 (table 구조) 복사하고 싶다면 where 절을 걸고 false 개념을 넣는다. 마찬가지로 rollback은 되지 않는다.
+
+create table emp_new
+as select * from emp where 1=2;
+

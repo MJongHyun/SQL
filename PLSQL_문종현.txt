@@ -1,0 +1,2998 @@
+[문제1] 화면의 결과 처럼 프로그램을 작성하세요.
+
+TODAY'S : 2018-07-04
+TOMORROW'S : 2018-07-05
+
+begin 
+	dbms_output.put_line(q'[TODAY'S : ]' || to_char(sysdate,'yyyy-mm-dd'));
+	dbms_output.put_line(q'[TOMORROW'S : ]' || to_char(sysdate+1,'yyyy-mm-dd'));
+end;
+/
+
+[문제2] 전체 사원의 평균 급여를 출력 하는 프로그램 만드세요.  프로그램 수행이 끝난 후에도 전체 사원의 평균값을 이용해서 전체 사원의 평균 급여 보다 많이 받는 사원의 정보 select 문장을 작성하세요.
+
+var v_sal number
+ 
+
+begin
+
+	select avg(salary)
+	into :v_sal
+	from employees;
+	dbms_output.put_line('평균급여 :' || round(:v_sal));
+	
+
+end;
+/
+
+select * from employees where salary > :v_sal;
+
+[문제3] 사원 번호를 입력값으로 받아서 그사원의 사번, 이름, 급여 정보를 출력하는 프로그램을 작성하세요.
+
+<화면 결과>
+
+결과=> 사원번호: 100, 사원이름: King, 사원급여: 24000
+
+var b_id number
+
+exec :b_id:=100
+
+declare
+	v_last_name employees.last_name%type;
+	v_salary employees.salary%type;
+
+begin
+	select employee_id, last_name, salary
+	into :b_id,v_last_name,v_salary
+	from employees
+	where employee_id=:b_id;
+	dbms_output.put_line('결과=> '||'사원번호: ' || (:b_id) || ',사원이름: ' || v_last_name || ',사원급여: ' || v_salary);
+end;
+/
+	
+
+
+
+[문제4] 사원 번호를 입력값으로 받아서 입사일, 급여 정보를 출력하는 프로그램을 작성하세요.
+
+
+
+<화면 결과>
+
+Hire date is : 2003년 6월 17일
+Salary is : ￦24,000.00
+
+
+var b_id number
+
+exec :b_id:=100
+
+declare
+	v_hire_date date;
+	v_sal number;
+
+begin
+	select hire_date,salary
+	into v_hire_date,v_sal
+	from employees
+	where employee_id=:b_id;
+	dbms_output.put_line('Hire date is : ' || to_char(v_hire_date,'yyyy"년" fmmm"월" dd"일"'));
+	dbms_output.put_line('Salary is : ' ||ltrim(to_char( v_sal,'l999,999.00'))); -- 통화가치 부호로 인해서 공백문자를 없애기 위해 ltrim을 사용한다.
+end;
+/
+
+[문제 5] 부서테이블에 신규 부서를 입력하는 프로그램을 작성하려고 합니다.
+              부서 이름만 입력값으로 받고 부서코드는 마지막 부서 코드에 10을 증가해서 부서코드를
+              넣고 관리자번호, 부서 위치는 null값으로 입력하는 프로그램을 작성하세요.
+              화면출력 처럼 출력하세요.(dept 테이블을 생성한후 프로그램을 만드세요) 
+
+
+<화면출력>
+
+신규 부서 번호는 280, 부서 이름 It 입니다.
+
+
+SQL> drop table dept purge;
+
+Table dropped.
+
+SQL> create table dept as select * from departments;
+
+Table created.
+
+alter table dept add constraint dept_dept_id_pk primary key(department_id); -- max를 할 때 계속 full scan 하는 것을 방지하기 위해 사용한다.
+
+select  * from user_ind_columns where table_name='DEPT';
+
+var b_dept_name varchar2(20)
+
+exec :b_dept_name:='it'
+
+declare
+	v_max dept.department_id%type;
+
+begin
+	select max(department_id) 
+	into v_max -- 여기서 이값이 나오니까 이 값으로만 해결하면 된다 .
+	from dept;
+	v_max := v_max+10;
+	insert into dept(department_id,department_name,manager_id,location_id)
+	values(v_max,initcap(:b_dept_name),null,null);
+
+	if sql%found then
+		dbms_output.put_line('신규 부서 번호는 '|| v_max ||', 부서이름 '|| :b_dept_name||' 입니다.');
+	end if;	
+end;
+/
+[문제6]사원번호를 입력값으로 받아서 그 사원의 급여를 10%인상하는 프로그램을 수행하세요.
+화면의 출력되는 결과는 수정 전 월급과 수정 후 월급이 아래와 같이 출력 후 transaction은 rollback 하세요.
+
+
+var b_id number
+
+execute :b_id := 100
+
+
+수정 전 월급 : 24000
+수정 후 월급 : 26400
+
+
+
+SQL> drop table emp purge;
+
+Table dropped.
+
+SQL> create table emp as select * from employees;
+
+Table created.
+
+var b_id number
+var v_sal number
+
+execute :b_id := 100
+
+begin
+
+	select salary 
+	into :v_sal
+	from employees
+	where employee_id=:b_id;
+	update employees set salary=:v_sal*1.1 where employee_id=:b_id;
+	dbms_output.put_line('수정 전 월급 :' ||:v_sal);
+	dbms_output.put_line('수정 후 월급 : '||:v_sal*1.1);
+        
+end;
+/
+rollback;
+
+var b_id number
+var v_sal number
+
+execute :b_id := 100
+
+create index emp_id_pk on emp(employee_id);
+
+begin 
+	
+
+		select salary 
+		into :v_sal
+		from employees
+		where employee_id=:b_id;
+		dbms_output.put_line('수정 전 월급 :' ||:v_sal);
+
+		update employees set salary=salary*1.1 where employee_id=:b_id;
+		
+		select salary 
+		into :v_sal
+		from employees
+		where employee_id=:b_id;
+		dbms_output.put_line('수정 후 월급 : '||:v_sal);
+		
+end;
+/
+rollback;
+
+-- 문제점 : 똑같은 문이 일어나는데 테이블을 새로 만든거라서 index를 만들어줘서 해야 빨리 만들어 진다.
+   그리고 변경된 값을 바로 불러 낼 수 있는 방법을 사용하기 위해서 PL/SQL을 사용한다.
+
+begin 
+	
+
+		select salary 
+		into :v_sal
+		from employees
+		where employee_id=:b_id;
+		dbms_output.put_line('수정 전 월급 :' ||:v_sal);
+
+		update employees set salary=salary*1.1 where employee_id=:b_id;
+		returning salary into v_sal;
+		
+		
+end;
+/
+rollback;
+
+begin 
+	
+
+		select salary 
+		into :v_sal
+		from employees
+		where employee_id=:b_id;
+
+		dbms_output.put_line('수정 전 월급 :' ||:v_sal);
+
+		update employees 
+		set salary=salary*1.1 
+		where employee_id=:b_id
+		returning salary into v_sal; -- 암시적 cursor에서 fetch를 하는 기능을 얘기 한다. (수정된 값을 바로 확인을 할 수 있다.) DML에 사용하는 절이다.
+		
+		dbms_output.put_line('수정 후 월급 : '||:v_sal);
+		
+end;
+/
+rollback;
+
+[문제7] 사원번호를 입력값으로 받아서 그 사원을 삭제하는 프로그램을 수행하세요.
+화면의 출력되는 결과는 아래와 같이 출력 후 transaction은 rollback 하세요.
+(emp 테이블 사용하세요.)
+
+<화면출력>
+
+삭제된 사원의 사원 번호는 100 이고  사원의 이름은 King 입니다.
+
+
+var b_id number
+
+execute :b_id := 100
+
+declare
+	v_last_name emp.last_name%type;
+begin
+
+	delete from emp
+	where employee_id=:b_id
+	returning employee_id,last_name into :b_id,v_last_name;
+
+	dbms_output.put_line('삭제된 사원의 사원번호는 ' || :b_id || ' 이고 사원의 이름은 ' || v_last_name || '입니다.');  
+
+end;
+/
+rollback;
+
+[문제8] 부서코드를 입력값으로 받아서 그 부서의 근무하는 사원의 인원수를 출력하시고 
+        그 부서 사원들의 급여중에 10000 미만인 사원만 10% 인상한 급여로 수정하는 프로그램을 작성하세요.
+        화면출력한 후 rollback 하세요.(emp 테이블 사용하세요)
+
+
+<화면출력>
+
+20 부서의 인원수는  2명 입니다.
+
+20 부서의 수정된 ROW의 수는 1 입니다.
+
+
+
+var b_id number
+
+execute :b_id := 20
+
+declare 
+	v_dept_id emp.department_id%type; 
+	v_sal emp.salary%type;
+
+begin
+
+	select count(department_id)
+	into v_dept_id
+	from emp
+	where department_id=:b_id;
+	
+	dbms_output.put_line(:b_id||' 부서의 인원 수는 ' ||v_dept_id|| ' 입니다.');
+	
+	update emp set salary=salary*1.1 where salary<10000 and department_id=:b_id
+	returning salary into v_sal;
+	dbms_output.put_line(:b_id||' 부서의 수정된 ROW의 수는 ' ||sql%rowcount ||' 입니다.');
+	
+end;
+/
+[문제9] 나이를 입력값으로 받아서 유아, 어린이, 청소년, 성인 출력해주세요
+
+
+유아 1세 이상 6세 미만
+어린이 기준 : 6세 이상 13 미만
+청소년 13이상 19세 미만
+성인 19세 이상
+
+var b_myage number
+exec :b_myage := 15
+
+begin
+	if :b_myage>=1 and :b_myage<6 then
+		dbms_output.put_line('유아'); 
+	elsif
+		:b_myage>=6 and :b_myage<13 then
+			dbms_output.put_line('어린이');
+	elsif
+		:b_myage>=13 and :b_myage<19 then
+			dbms_output.put_line('청소년');
+	else
+		dbms_output.put_line('성인');
+	end if;
+
+end;
+/ 
+		
+	
+[문제10] 숫자를 입력값 받아서 짝수 인지 홀수 인지를 출력하는 프로그램을 작성하세요.
+
+var v_a number
+execute :v_a := 7
+
+
+홀수입니다.
+
+begin
+
+	if mod(:v_a,2)=1 then
+		dbms_output.put_line('홀수');
+	else
+		dbms_output.put_line('짝수');
+	end if;
+
+end;
+/
+
+[문제11] 급여, 커미션를 입력 값으로 받아서 두값을 더하는 프로그램을 만드세요.
+
+
+<화면출력>
+
+두 바인드 변수에 값을 입력해주세요
+
+<화면출력>
+
+급여만 입력되었습니다.10000
+
+<화면출력>
+
+커미션만 입력되었습니다.10
+
+<화면출력>
+
+10010
+
+var v_sal number
+var v_comm number
+
+exec :v_sal:=10000
+exec :v_comm :=10
+
+begin
+
+	if :v_comm is null and :v_sal is null then
+		dbms_output.put_line('두 바인드 변수에 값을 입력해주세요.');
+	elsif :v_comm is null then
+		dbms_output.put_line('급여만 입력되었습니다.'|| :v_sal );
+	elsif :v_sal is null then
+		dbms_output.put_line('커미션만 입력되었습니다.'|| :v_comm);
+	else
+		dbms_output.put_line(:v_sal+:v_comm);
+	end if;
+	
+end;
+/
+
+[문제12] 두개의 숫자를 입력해서 해당 숫자의 차이값을 출력하세요.
+숫자를 어떻게 입력하던 큰 숫자에서 작은 숫자로 빼기를 하세요.
+
+var v_a number
+var v_b number
+execute :v_a := 7
+execute :v_b := 10
+
+print v_a v_b
+
+begin
+	if :v_a>:v_b then
+		dbms_output.put_line(:v_a-:v_b);
+	else
+		dbms_output.put_line(:v_b-:v_a);
+	end if;
+	
+end;
+/
+
+[문제13] 사원번호를 입력값으로 받아서 그 사원의 근무개월수를 출력하고 근무개월수가
+
+150개월 이상이면 급여를 20% 인상한 급여로 수정, 
+149개월 보다 작거나 같고 100개월 보다 크거나 같으면  10%인상한 급여로 수정,
+100개월 미만인 근무자는 아무 작업을 수행하지 않는 프로그램을 작성하세요.
+테스트가 끝나면 rollback 합니다.(emp 테이블 사용)
+
+
+<화면 출력>
+
+100 사원은 근무개월수가 154 입니다. 급여는 20% 수정되었습니다.
+
+
+<화면 출력>
+
+166 사원은 근무개월수가 97 입니다. 100 개월 미만이므로  급여 수정 안됩니다.
+
+
+
+var v_emp_id number
+
+exec :v_emp_id:=100
+
+
+declare
+
+	v_aa  number;
+	
+begin
+
+	select trunc(months_between(sysdate,hire_date),0) 
+	into v_aa 
+	from emp 
+	where employee_id=:v_emp_id;
+	
+	if v_aa>=150 then
+		update emp set salary=salary*1.2 where employee_id=:v_emp_id;
+		dbms_output.put_line(:v_emp_id||' 사원은 근무개월수가 '||v_aa||' 입니다. '||'급여는 20% 수정되었습니다.');
+	elsif v_aa>=100 then
+		update emp set salary=salary*1.1 where employee_id=:v_emp_id;
+		dbms_output.put_line(:v_emp_id||' 사원은 근무개월수가 '||v_aa||' 입니다. '||'급여는 10% 수정되었습니다.'); 
+	else
+		dbms_output.put_line(:v_emp_id||' 사원은 근무개월수가 '||v_aa||' 입니다. '||'100 개월 미만이므로 급여 수정이 안됩니다.');
+	end if;
+end;
+/
+rollback;
+
+
+[문제14] 사원번호를 입력값으로 받아서 그 사원의 근무개월수를 출력하고 근무개월수가
+
+150개월 이상이면 급여를 20% 인상한 급여로 수정, 
+149개월 보다 작거나 같고 100개월 보다 크거나 같으면  10%인상한 급여로 수정,
+100개월 미만인 근무자는 아무 작업을 수행하지 않는 프로그램을 작성하세요.
+테스트가 끝나면 rollback 합니다.(emp 테이블 사용) -case 문으로 사용
+
+var v_emp_id number
+exec :v_emp_id:=100
+
+declare
+
+	v_aa number;
+begin
+
+	    	select trunc(months_between(sysdate,hire_date),0) 
+		into v_aa 
+		from emp 
+		where employee_id=:v_emp_id;
+	case
+		
+		when v_aa>=150 then update emp set salary=salary*1.2 where employee_id=:v_emp_id;
+				dbms_output.put_line(:v_emp_id||' 사원은 근무개월수가 '||v_aa||' 입니다. '||'급여는 20% 수정되었습니다.');
+		when v_aa>=100 then update emp set salary=salary*1.1 where employee_id=:v_emp_id;
+				dbms_output.put_line(:v_emp_id||' 사원은 근무개월수가 '||v_aa||' 입니다. '||'급여는 10% 수정되었습니다.'); 
+		else
+			dbms_output.put_line(:v_emp_id||' 사원은 근무개월수가 '||v_aa||' 입니다. '||'100 개월 미만이므로 급여 수정이 안됩니다.');
+
+	end case;	
+end;
+/
+	
+[문제15] 화면의 숫자 1 부터 10 까지 출력하는 프로그램을 작성합니다. 단 4,8번은 출력하지 마세요.
+
+
+<화면출력>
+1
+2
+3
+5
+6
+7
+9
+10
+
+declare
+	i number := 0;
+begin 
+	loop
+		i := i+1;
+		if i < 4 then
+			dbms_output.put_line(i);
+		elsif i>=5 and i<8 then
+			dbms_output.put_line(i);
+		elsif i>=9 and i<10 then
+			dbms_output.put_line(i);
+		elsif i=10 then
+			dbms_output.put_line(i);
+			exit;
+		end if;
+	end loop; 
+end;
+/
+
+declare
+	i number := 1;
+begin
+	while i<=10 loop
+		if i=4 or i=8 then
+			null;
+		else 
+			dbms_output.put_line(i);
+		end if;
+		i := i+1;
+	end loop;
+end;
+/
+
+begin
+
+	for i in 1..10 loop
+		if i<>4 and i<>8 then
+			dbms_output.put_line(i);
+	end if;
+end loop;
+end;
+/
+
+
+declare
+ 	i number := 1;
+begin
+  loop
+    if i = 4 or i = 8 then
+        null;
+    else 
+      dbms_output.put_line(i);
+    end if;
+	i := i + 1;
+	exit when i > 10;
+  end loop;
+end;
+/
+
+[문제16] 1번부터 100까지 짝수만 출력하세요.(기본 loop, while loop, for loop)
+
+declare
+	i number := 1;
+begin
+	loop	
+		i:=i+1;
+		
+		if mod(i,2)=0 then
+			dbms_output.put_line(i);
+		elsif i>100 then
+			exit;
+		end if;
+	end loop;
+end;
+/
+
+declare
+	i number :=1;
+begin
+	while i<=100 loop
+		i := i+1;
+		if mod(i,2)=0 then	
+			dbms_output.put_line(i);
+		end if;
+	end loop;
+end;
+/
+
+begin
+	for i in 1..100 loop
+		if mod(i,2)= 0 then
+			dbms_output.put_line(i);
+		end if;	
+	end loop;
+end;
+/
+[문제17] 1번부터 100까지 홀수만 출력하세요.
+
+declare
+	i number := 1;
+begin
+	loop	
+		i:=i+1;
+		
+		if mod(i,2)=1 then
+			dbms_output.put_line(i);
+		elsif i>100 then
+			exit;
+		end if;
+	end loop;
+end;
+/
+
+declare
+	i number :=1;
+begin
+	while i<=100 loop
+		i := i+1;
+		if mod(i,2)=1 then	
+			dbms_output.put_line(i);
+		end if;
+	end loop;
+end;
+/
+
+begin
+	for i in 1..100 loop
+		if mod(i,2)= 1 then
+			dbms_output.put_line(i);
+		end if;	
+	end loop;
+end;
+/
+
+[문제18] 구구단 2단 출력하는 프로그램을 작성하세요.
+
+2 * 1 = 2
+2 * 2 = 4
+2 * 3 = 6
+2 * 4 = 8
+2 * 5 = 10
+2 * 6 = 12
+2 * 7 = 14
+2 * 8 = 16
+2 * 9 = 18
+
+begin
+	for i in 1..9 loop
+		dbms_output.put_line('2 * '|| i || ' = ' || 2*i);
+	end loop;
+end;
+/
+var b_dan number
+
+exec :b_dan:=2
+
+declare
+
+	i number :=0;
+
+begin 
+	while i<9 loop
+		i := i+1;
+		dbms_output.put_line(:b_dan||' * '||i||' = '||:b_dan*i);
+	end loop;
+end;
+/
+
+declare
+	i number :=0;
+begin
+	loop
+		i:=i+1;
+		dbms_output.put_line(:b_dan||' * '||i||' = '||:b_dan*i);
+	exit when i>8;
+	end loop;
+end;
+/
+
+[문제19] 단을 입력값으로 받아서 그 단에 대해서만 출력하시고 만약에 단 입력값이 없으면 전체 구구단이 출력되도록 작성하세요.
+
+var b_dan number
+
+execute :b_dan := 2
+
+execute :b_dan := null
+
+
+begin
+	for i in 1..9 loop
+		for j in 1..9 loop
+			if :b_dan=i then
+				dbms_output.put_line(:b_dan||' * '||j||' = '|| :b_dan*j);	
+		
+			elsif
+			  :b_dan is null then
+				dbms_output.put_line(i||' * '||j||' = '|| i*j);	
+			end if;
+		end loop;
+	end loop;
+			
+end;
+/
+
+# nested loop 구조와 같다.
+
+
+[문제20] 사원 테이블의 employee_id, last_name 을 출력하는 프로그램입니다.
+       사원번호는 100번 부터 해서 5씩 증가한 정보를 출력하시고 120번으로 끝내도록 해주세요.
+ 
+<화면 출력>
+
+100  King
+105  Austin
+110  Chen
+115  Khoo
+120  Weiss
+
+var v_emp_id number
+
+exec :v_emp_id:=95;
+
+declare
+
+	v_last_name varchar2(20);
+
+begin
+	for i in 1..5 loop
+		:v_emp_id:=:v_emp_id+5;
+		select employee_id, last_name
+		into :v_emp_id, v_last_name
+		from employees
+		where employee_id=:v_emp_id;
+		dbms_output.put_line(:v_emp_id|| ' ' || v_last_name);
+	end loop;
+
+
+end;
+/
+
+declare
+	v_emp_idd number:=95;
+	v_last_name varchar2(20);
+
+begin
+	for i in 1..5 loop
+		v_emp_idd:=v_emp_idd+5;
+		select employee_id, last_name
+		into v_emp_idd, v_last_name
+		from employees
+		where employee_id=v_emp_idd;
+		dbms_output.put_line(v_emp_idd|| ' ' || v_last_name);
+	end loop;
+
+
+end;
+/
+
+
+[문제21] 사원 번호를 입력 값으로 받아서 그 사원의 급여를 출력하는 프로그램을 작성합니다. 
+       또한 급여 1000당 별(*) 하나를 출력해주세요.(반복문을 이용하세요)
+
+<화면출력>
+employee_id => 200  salary => 4400
+star is => **** 
+------------
+
+var b_id number;
+
+exec :b_id:=200;
+
+declare
+	b_sal number;
+	v_sal number;
+	p_star varchar2(50);
+begin
+	select salary,trunc(salary/1000)
+	into v_sal, b_sal
+	from employees
+	where employee_id =:b_id;
+
+	for i in 1..b_sal loop
+		p_star := p_star||'*';
+	end loop;
+
+	dbms_output.put_line('employee_id => '||:b_id||' salary => '||v_sal);
+	dbms_output.put_line('star is => '|| p_star);
+
+
+end;
+/
+
+
+[문제22] continue문을 사용하지 않고 동일한 기능을 하는 문장을 작성하라.
+
+declare
+  v_total number :=0;
+begin
+  for i in 1..10 loop
+	v_total := v_total+ i;
+  dbms_output.put_line('Total is : ' || v_total);
+  continue when i>5;
+	v_total :=v_total +i;
+  dbms_output.put_line('Out of loop total is : ' || v_total);
+ end loop;
+end;
+/
+------------
+
+declare
+  v_total number :=0;
+begin
+  for i in 1..10 loop
+	v_total := v_total+ i;
+  dbms_output.put_line('Total is : ' || v_total);
+  
+  loop 
+     exit when i>5;
+	v_total :=v_total +i;
+        dbms_output.put_line('Out of loop total is : ' || v_total);
+     exit;
+  end loop;
+ end loop;
+end;
+/
+
+
+[문제23] continue문을 사용하지 않고 동일한 기능을 하는 문장을 작성하라.
+
+declare
+  v_total number := 0;
+begin
+  <<toploop>>
+  for i in 1..10 loop
+  v_total := v_total+i;
+  dbms_output.put_line('Total is : ' || v_total);
+
+  for j in 1..10 loop
+  continue toploop when i+j>5;
+  v_total := v_total+i;
+  dbms_output.put_line(v_total);
+ end loop;
+end loop;
+end;
+/
+
+
+declare
+  v_total number := 0;
+begin
+  <<toploop>>
+  for i in 1..10 loop
+  v_total := v_total+i;
+  dbms_output.put_line('Total is : ' || v_total);
+
+  for j in 1..10 loop
+  exit when i+j>5;
+  v_total := v_total+i;
+  dbms_output.put_line(v_total);
+ end loop;
+end loop;
+end;
+/
+
+[문제24]구구단 2단을 for loop를 이용해서 출력하세요. 단 2 * 6은 제외 시켜주세요.
+
+2 * 1 = 2
+2 * 2 = 4
+2 * 3 = 6
+2 * 4 = 8
+2 * 5 = 10
+2 * 7 = 14
+2 * 8 = 16
+2 * 9 = 18
+
+
+begin
+	for i in 1..9 loop
+		dbms_output.put_line('2 * '||i||' = '||2*i);
+	end loop;
+end;
+/
+
+[문제25] 배열 변수에 있는 100,101,102,103,104, 200 사원들의 근무한 개월 수를
+	출력하고 근무개월수가 150개월이상 되었으면 급여(salary)를 10% 인상한
+	급여로 수정하는 프로그램 작성하세요.
+
+<출력 결과>
+100는 근무개월수가 166 입니다. 급여는 10% 인상되었습니다.
+101는 근무개월수가 139 입니다. 급여는 인상할 수 없습니다.
+102는 근무개월수가 195 입니다. 급여는 10% 인상되었습니다.
+103는 근무개월수가 135 입니다. 급여는 인상할 수 없습니다.
+104는 근무개월수가 119 입니다. 급여는 인상할 수 없습니다.
+200는 근무개월수가 163 입니다. 급여는 10% 인상되었습니다.
+------------
+
+declare
+
+	type v_tab is table of number;
+	b_tab v_tab := v_tab(100,101,102,103,104,200);
+	v_mon number;
+
+begin
+	for i in b_tab.first..b_tab.last loop
+		select trunc(months_between(sysdate,hire_date))
+		into v_mon
+		from employees
+		where employee_id=b_tab(i);
+
+		if v_mon>=150 then
+			update employees
+			set salary = salary * 1.1
+			where employee_id =b_tab(i);
+			dbms_output.put_line(b_tab(i)||'는 근무개월수가 '||v_mon||' 입니다. 급여는 10% 인상되었습니다.');
+		else
+			dbms_output.put_line(b_tab(i)||'는 근무개월수가 '||v_mon||' 입니다. 급여는 인상할 수 없습니다.');
+		end if;
+	end loop;
+	rollback;
+end;
+/
+
+declare
+
+	type v_tab is table of number index by binary_integer;
+	b_tab v_tab;
+	v_mon number;
+
+begin
+	b_tab(1) := 100; 
+	b_tab(2) := 101;
+	b_tab(3) := 102;
+	b_tab(4) := 103;
+	b_tab(5) := 104;
+	b_tab(6) := 200;
+
+	for i in b_tab.first..b_tab.last loop
+		select trunc(months_between(sysdate,hire_date))
+		into v_mon
+		from employees
+		where employee_id=b_tab(i);
+
+		if v_mon>=150 then
+			update employees
+			set salary = salary * 1.1
+			where employee_id =b_tab(i);
+			dbms_output.put_line(b_tab(i)||'는 근무개월수가 '||v_mon||' 입니다. 급여는 10% 인상되었습니다.');
+		else
+			dbms_output.put_line(b_tab(i)||'는 근무개월수가 '||v_mon||' 입니다. 급여는 인상할 수 없습니다.');
+		end if;
+	end loop;
+	rollback;
+end;
+/
+
+
+
+[문제26] 배열변수안에 있는 사원 번호 값을 기준으로 (100,110,200)
+	그 사원의 last_name, hire_date, department_name 정보를
+	배열변수에 담아놓은 후 화면에 출력하는 프로그램을 작성하세요.
+     
+<화면결과>
+100 사원의 이름은 King, 입사한 날짜는 2003-06-17, 근무 부서이름은 Executive 입니다.
+110 사원의 이름은 Chen, 입사한 날짜는 2005-09-28, 근무 부서이름은 Finance 입니다.
+200 사원의 이름은 Whalen, 입사한 날짜는 2003-09-17, 근무 부서이름은 Administration 입니다.
+------------
+
+declare
+	type b_rec is record(name varchar2(50), hire date, dept_name varchar2(50));
+	type v_tab is table of b_rec index by binary_integer;
+	b_tab v_tab;
+
+	type b_id is table of number index by binary_integer;
+	v_id b_id;
+
+begin
+	v_id(1) := 100;
+	v_id(2) := 110;
+	v_id(3) := 200;
+
+	for i in v_id.first..v_id.last loop
+		select e.last_name,e.hire_date,d.department_name
+		into b_tab(i).name,b_tab(i).hire,b_tab(i).dept_name
+		from employees e, departments d
+		where e.department_id=d.department_id
+		and e.employee_id=v_id(i);
+	
+		dbms_output.put_line(v_id(i)||' 사원의 이름은 '||b_tab(i).name||', 입사한 날짜는 '||b_tab(i).hire||', 근무 부서의 이름은 ' ||b_tab(i).dept_name||' 입니다.');
+	end loop;  	
+
+end;
+/
+
+
+
+
+
+[문제27]배열 변수에 있는 100,101,102,103,104, 200 사원번호를 기준으로 사원 이름,
+	근무 개월 수,  근무 개월 수가 150개월 이상이라면 급여(salary)를
+	10% 인상한 급여로 수정한 뒤 인상 전 급여, 인상 후 급여를
+	출력하는 프로그램을 작성하세요.
+
+사원 번호 : 100 사원 이름 :  King    근무개월수 :  166 인상 전 급여 : 24000 인상 후 급여 : 26400
+사원 번호 : 101 사원 이름 :  Kochhar 근무개월수 :  139 17000 급여는 인상할 수 없습니다.
+사원 번호 : 102 사원 이름 :  De Haan 근무개월수 :  195 인상 전 급여 : 17000 인상 후 급여 : 18700
+사원 번호 : 103 사원 이름 :  Hunold  근무개월수 :  135 9000 급여는 인상할 수 없습니다.
+사원 번호 : 104 사원 이름 :  Ernst   근무개월수 :  119 6000 급여는 인상할 수 없습니다.
+사원 번호 : 200 사원 이름 :  Whalen  근무개월수 :  163 인상 전 급여 : 4400 인상 후 급여 : 4840
+
+declare
+	type v_rec is record(name varchar2(50), mon number, sal number);
+	type b_tab is table of v_rec index by binary_integer;
+	v_tab b_tab;
+	b_sal number;
+	type b_id is table of number;
+	v_id b_id := b_id(100,101,102,103,104,200); 
+begin
+	
+	for i in v_id.first..v_id.last loop
+		select last_name, trunc(months_between(sysdate,hire_date)), salary 
+		into v_tab(i)
+		from employees
+		where employee_id=v_id(i);
+		
+		if v_tab(i).mon>=150 then
+			update employees 
+			set salary=salary*1.1
+			where employee_id=v_id(i)
+			returning salary into b_sal;
+			dbms_output.put_line('사원 번호 : '||v_id(i)||' 사원 이름 : '||v_tab(i).name||'근무개월수 : '||v_tab(i).mon||'인상전 급여 : '|| v_tab(i).sal ||'인상 후 급여 : '|| b_sal);
+		else	
+			dbms_output.put_line('사원 번호 : '||v_id(i)||' 사원 이름 : '||v_tab(i).name||'근무개월수 : '||v_tab(i).mon||'인상전 급여 : '|| v_tab(i).sal ||' 급여는 인상할 수 없습니다.' );
+		end if;
+	end loop;	
+
+
+end;
+/
+
+[문제28] 배열에 1,2,4,5,6,10,20,21,55,60,22,8,0,6,20,40,6,9 값이 있습니다.
+	 찾는 숫자의 배열 위치 정보 총 갯수 정보를 출력하세요.
+
+
+<화면결과>
+20 값은 배열에 7,15 위치에 있으며 총 2 개 있습니다.
+100 값은 없습니다.
+
+
+var v_id number
+exec :v_id:=20
+exec :v_id:=100
+
+declare
+	type v_rec is table of number;
+	b_id v_rec := v_rec(1,2,4,5,6,10,20,21,55,60,22,8,0,6,20,40,6,9);
+	b_num varchar2(100);
+	v_cn number := 0;
+begin
+	for i in b_id.first..b_id.last loop
+		if b_id(i)=:v_id then
+			b_num := b_num||','||to_char(i);
+			v_cn := v_cn+1;
+		end if;
+	end loop;
+	
+	if v_cn=0 then
+		dbms_output.put_line(:v_id ||' 값은 없습니다.');
+	else
+		dbms_output.put_line(:v_id ||' 값은 배열에 '|| ltrim(b_num,',') ||' 위치에 있으며 총 '||v_cn||' 개 있습니다.');	
+	end if;
+
+end;
+/
+
+# 보류
+
+declare
+	type v_rec is table of number;
+	b_id v_rec := v_rec(1,2,4,5,6,10,20,21,55,60,22,8,0,6,20,40,6,9);
+	type b_n is table of number index by binary_integer;
+	a_id b_n;
+	b_num varchar2(50);
+	a_num number;
+	v_cn number := 0;
+begin
+	for i in b_id.first..b_id.last loop
+		if b_id(i)=:v_id then
+			a_id(i) := i; 
+		end if;
+	end loop;
+
+	for j in a_id.first..a_id.last loop
+		if a_id.exists(j) then
+			a_num := a_id(j);
+			b_num := b_num || ',' ||a_num;
+			v_cn := v_cn+1;			
+		end if;
+	end loop;
+ 	
+	if v_cn=0 then
+		dbms_output.put_line(:v_id ||' 값은 없습니다.');
+	else
+		dbms_output.put_line(:v_id ||' 값은 배열에 '|| ltrim(b_num,',') ||' 위치에 있으며 총 '||v_cn||' 개 있습니다.');	
+	end if;
+end;
+/
+
+[문제29] 사원의 last_name 값을 입력 받아서 그 사원의
+	employee_id, last_name, department_name 출력하고
+	만약 없는 last_name을 입력한 경우에는  "~라는 사원은 존재하지 않습니다."를
+	출력 하는 프로그램을 만드세요.
+
+입력값 : king
+Employee Id = 156 Name = King Department Name = Sales
+Employee Id = 100 Name = King Department Name = Executive
+
+입력값 : hong
+Hong 이라는 사원은 존재하지 않습니다.
+
+var v_name varchar2(50)
+exec :v_name := 'king'
+exec :v_name := 'hong'
+
+declare
+	cursor emp_cur is 
+			select e.employee_id, e.last_name, d.department_name
+			from employees e, departments d
+			where d.department_id=e.department_id
+			and e.last_name=initcap(:v_name);
+	v_cur emp_cur%rowtype;			
+begin
+	open emp_cur;
+	loop
+		fetch emp_cur into v_cur; 
+		if emp_cur%rowcount=0 then
+			dbms_output.put_line(:v_name||' 이라는 사원은 존재하지 않습니다.');
+			exit;
+		elsif emp_cur%notfound then exit;
+		else
+			dbms_output.put_line('Employee_id = '|| v_cur.employee_id ||' Name = '||:v_name||' Department Name = '||v_cur.department_name);
+		end if;
+	end loop;
+	
+	close emp_cur;
+end;
+/
+
+declare
+	cursor emp_cur is 
+			select e.employee_id, e.last_name, d.department_name
+			from employees e, departments d
+			where d.department_id=e.department_id
+			and e.last_name=initcap(:v_name);
+	v_c number := 0;
+begin 
+	for v_cur in emp_cur loop
+		dbms_output.put_line('Employee_id = '|| v_cur.employee_id ||' Name = '||:v_name||' Department Name = '||v_cur.department_name);
+		v_c := emp_cur%rowcount;
+	end loop;
+	
+	if v_c=0 then
+		dbms_output.put_line(:v_name||' 이라는 사원은 존재하지 않습니다.');
+	end if;
+end;
+/
+[문제30] 2006년도에 입사한 사원들의 근무 도시 이름 별로 급여의 총액, 평균을 출력하세요.
+
+<화면출력>
+Seattle 도시에 근무하는 사원들의 총액급여는 ￦10,400 이고 평균급여는 ￦5,200 입니다.
+South San Francisco 도시에 근무하는 사원들의 총액급여는 ￦37,800 이고 평균급여는 ￦2,907 입니다.
+Southlake 도시에 근무하는 사원들의 총액급여는 ￦13,800 이고 평균급여는 ￦6,900 입니다.
+Oxford 도시에 근무하는 사원들의 총액급여는 ￦59,100 이고 평균급여는 ￦8,442 입니다.
+
+declare
+	cursor emp_cur is 
+			select l.city, sum(e.salary) sumsal, avg(e.salary) avgsal
+			from employees e, departments d, locations l
+			where e.department_id=d.department_id
+			and d.location_id=l.location_id
+			and e.hire_date>=to_date('2006-01-01','yyyy-mm-dd')
+			and e.hire_date<to_date('2007-01-01','yyyy-mm-dd')
+			group by l.city;
+begin
+	for v_rec in emp_cur loop
+		dbms_output.put_line(v_rec.city||' 도시에 근무하는 사원들의 총액 급여는'||ltrim(to_char(v_rec.sumsal,'l999g999'))||'이고 평균급여는'||ltrim(to_char(v_rec.avgsal,'l999g999'))||'입니다.');
+	end loop;
+	
+end;
+/
+
+
+[문제31] 30번 부서 사원들의 이름, 급여, 근무개월수, 부서이름을 출력하고
+	그 사원들 중에 근무개월수가 150개월 이상인 사원들의 급여를
+	10%인상하는 프로그램을 작성하세요.
+
+<화면 출력>
+사원이름 : Raphaely 급여 : 11000 근무개월수 : 172 부서 이름 :  Purchasing
+Raphaely 10%인상 급여로 수정했습니다.
+사원이름 : Khoo 급여 : 3100 근무개월수 : 167 부서 이름 :  Purchasing
+Khoo 10%인상 급여로 수정했습니다.
+사원이름 : Baida 급여 : 2900 근무개월수 : 136 부서 이름 :  Purchasing
+사원이름 : Tobias 급여 : 2800 근무개월수 : 141 부서 이름 :  Purchasing
+사원이름 : Himuro 급여 : 2600 근무개월수 : 125 부서 이름 :  Purchasing
+사원이름 : Colmenares 급여 : 2500 근무개월수 : 116 부서 이름 :  Purchasing
+
+declare 
+	cursor emp_cur is
+			select e.rowid,e.last_name,e.salary,trunc(months_between(sysdate,e.hire_date)) mon,d.department_name
+			from employees e, departments d
+			where e.department_id=30
+			and d.department_id=30;
+begin
+	for v_rec in emp_cur loop
+		if v_rec.mon>=150 then
+			dbms_output.put_line('사원이름 : '||v_rec.last_name||' 급여 : '||v_rec.salary||' 근무개월수 : '||v_rec.mon||' 부서 이름 : '||v_rec.department_name);
+			dbms_output.put_line(v_rec.last_name || '10% 인상 급여로 수정했습니다.');
+			update employees set salary=salary*1.1 where rowid=v_rec.rowid;
+		else
+			dbms_output.put_line('사원이름 : '||v_rec.last_name||' 급여 : '||v_rec.salary||' 근무개월수 : '||v_rec.mon||' 부서 이름 : '||v_rec.department_name);
+		end if;
+	end loop;
+	rollback;
+end;
+/
+
+[문제32] 사원테이블에 부서코드를 입력값으로 받아서 그 사원들의
+	employee_id, last_name, salary, job_id를 출력하는 프로그램을 생성하세요.
+	단, 부서코드중에 50, 80, null 값이 입력되면 full table scan을 실행하고
+	그 외 부서 코드값이입력되면 index range scan으로 실행계획을 분리하세요.
+
+var b_id number
+execute :b_id := 50
+execute :b_id := 10
+execute :b_id := null
+
+SQL> col index_name format a20	
+SQL> col column_name format a20 -- 열과 폭 조절
+SQL> select ix.index_name, ix.uniqueness, ic.column_name
+     from user_indexes ix, user_ind_columns ic
+     where ix.index_name = ic.index_name
+     and ix.table_name = 'EMPLOYEES';
+
+INDEX_NAME           UNIQUENESS         COLUMN_NAME
+-------------------- ------------------ --------------------
+EMP_DEPARTMENT_IX    NONUNIQUE          DEPARTMENT_ID
+EMP_EMAIL_UK         UNIQUE             EMAIL
+EMP_EMP_ID_PK        UNIQUE             EMPLOYEE_ID
+EMP_HIRE_IDX         NONUNIQUE          HIRE_DATE
+EMP_JOB_IX           NONUNIQUE          JOB_ID
+EMP_MANAGER_IX       NONUNIQUE          MANAGER_ID
+EMP_NAME_IX          NONUNIQUE          FIRST_NAME
+EMP_NAME_IX          NONUNIQUE          LAST_NAME
+
+declare
+	type v_rec is record(id number,name varchar2(50), sal number, job_id varchar(50));
+	type b_tab is table of v_rec;
+	v_tab b_tab;
+begin
+	if :b_id in (50,80) then
+		select /*+ full(e) parallel(e,2) */ employee_id,last_name, salary, job_id
+		bulk collect into v_tab
+		from employees e
+		where department_id=:b_id;
+	
+	elsif :b_id is null then
+		select /*+ full(e) parallel(e,2) */ employee_id,last_name, salary, job_id
+		bulk collect into v_tab
+		from employees e
+		where department_id is null;
+	else
+		select /*+ index(e EMP_DEPARTMENT_IX)  */ employee_id,last_name, salary, job_id
+		bulk collect into v_tab
+		from employees e
+		where department_id=:b_id;
+	end if;
+	
+	for i in v_tab.first..v_tab.last loop
+		dbms_output.put_line('사원번호 : '||v_tab(i).id||' 이름 : '||v_tab(i).name||' 급여 : '||v_tab(i).sal||' JOB_ID : '||v_tab(i).job_id);
+	end loop;
+			 
+	
+end;
+/
+[문제33] 사원 번호를 입력 값으로 받아서 사원의 번호, 이름, 부서이름 정보를
+	출력하는 프로그램을 작성합니다.
+	단 100번 사원이 입력값으로 들어오면 예외사항이 발생하도록 해야 합니다.
+	또한 없는 사원번호 값이 들어오면 예외사항 처리을 만들어 주세요.
+
+<화면 결과>
+SQL> var b_id number
+SQL> execute :b_id := 200
+
+Result=> 사원번호 : 200, 사원이름 : Whalen, 부서이름 : Administration
+
+SQL> execute :b_id := 100
+100 사원은 조회할수 없습니다.
+
+SQL> execute :b_id := 300
+300 사원은 존재하지 않습니다.
+
+var b_id number
+execute :b_id := 200
+
+declare
+	type v_rec is record(name varchar2(50), dept_name varchar2(50));
+	v_tab v_rec;
+	e_100 exception;
+	
+begin
+	if :b_id=100 then
+		raise e_100;
+	else
+		select e.last_name, (select department_name
+					from departments
+					where e.department_id=department_id)
+		into v_tab
+		from employees e
+		where e.employee_id=:b_id;
+
+		dbms_output.put_line('Result=> 사원번호 : '||:b_id||', 사원이름 : '||v_tab.name||', 부서이름 : '||v_tab.dept_name);
+	end if; 		
+	
+
+exception
+	when no_data_found then
+		dbms_output.put_line(:b_id||' 사원은 존재하지 않습니다.');
+	when e_100 then
+		dbms_output.put_line(:b_id||' 사원은 조회할 수 없습니다.');
+end;
+/
+
+
+[문제34] 사원들 중에 job_id가 'SA_REP' 사원들의 이름, 부서 이름을 출력하고 부서 배치를 받지 않는
+사원들에 대해서는 "부서 배치를 못 받았습니다." 출력해야 합니다.
+또한 출력할때 카운터 수를 출력해주세요.(조인은 이용하지 마세요)
+
+1 사원이름 : Tucker, 부서이름 : Sales
+2 사원이름 : Bernstein, 부서이름 : Sales
+3 사원이름 : Hall, 부서이름 : Sales
+4 사원이름 : Olsen, 부서이름 : Sales
+5 사원이름 : Cambrault, 부서이름 : Sales
+6 사원이름 : Tuvault, 부서이름 : Sales
+7 사원이름 : King, 부서이름 : Sales
+8 사원이름 : Sully, 부서이름 : Sales
+9 사원이름 : McEwen, 부서이름 : Sales
+10 사원이름 : Smith, 부서이름 : Sales
+11 사원이름 : Doran, 부서이름 : Sales
+12 사원이름 : Sewall, 부서이름 : Sales
+13 사원이름 : Vishney, 부서이름 : Sales
+14 사원이름 : Greene, 부서이름 : Sales
+15 사원이름 : Marvins, 부서이름 : Sales
+16 사원이름 : Lee, 부서이름 : Sales
+17 사원이름 : Ande, 부서이름 : Sales
+18 사원이름 : Banda, 부서이름 : Sales
+19 사원이름 : Ozer, 부서이름 : Sales
+20 사원이름 : Bloom, 부서이름 : Sales
+21 사원이름 : Fox, 부서이름 : Sales
+22 사원이름 : Smith, 부서이름 : Sales
+23 사원이름 : Bates, 부서이름 : Sales
+24 사원이름 : Kumar, 부서이름 : Sales
+25 사원이름 : Abel, 부서이름 : Sales
+26 사원이름 : Hutton, 부서이름 : Sales
+27 사원이름 : Taylor, 부서이름 : Sales
+28 사원이름 : Livingston, 부서이름 : Sales
+29 사원이름 : Grant, 부서이름 : 부서 배치를 못 받았습니다.
+30 사원이름 : Johnson, 부서이름 : Sales
+
+declare
+	type v_rec is record(num number, name varchar2(50), dept_name varchar2(100));
+	type b_tab is table of v_rec;
+	v_tab b_tab;
+begin
+
+	select rownum, e.last_name, nvl((select department_name
+					 from departments
+					 where e.department_id=department_id),'부서 배치를 못 받았습니다.')
+	bulk collect into v_tab
+	from employees e
+	where e.job_id='SA_REP';
+
+	for i in v_tab.first..v_tab.last loop
+		dbms_output.put_line(v_tab(i).num||' 사원이름 : '||v_tab(i).name||', 부서이름 : '||v_tab(i).dept_name);
+	end loop;
+end;
+/
+
+declare
+  cursor emp_cursor is
+	select last_name, department_id 
+	from  employees
+  	where job_id = 'SA_REP';
+  type emp_tab_type is table of emp_cursor%rowtype;
+  v_tab emp_tab_type;
+  v_dept_name departments.department_name%type;
+  v_c number := 1;
+
+begin
+  open emp_cursor;
+  
+  fetch emp_cursor bulk collect into v_tab;
+  
+  for i in v_tab.first..v_tab.last loop
+	begin
+		select department_name 
+		into v_dept_name
+		from departments
+		where department_id = v_tab(i).department_id;
+	  
+		dbms_output.put_line(v_c||  ' 사원이름 : '||v_tab(i).last_name||', 부서이름 : '||v_dept_name);
+	  	v_c := v_c+1;
+	  
+	exception 
+		when no_data_found then 
+		  dbms_output.put_line(v_c||  ' 사원이름 : '||v_tab(i).last_name ||', 부서이름 : 부서 배치를 못 받았습니다.');
+	  	v_c := v_c + 1;
+	end;
+  end loop;
+  
+  close emp_cursor;
+end;
+/
+
+
+[문제35] 전체 사원들의 사번, 이름, 급여, 입사일, 근무연수를 출력합니다.
+	또한 근무연수가 13년 이상이고 급여는 10000 미만인 사원들은 예외사항이 발생하도록 한 뒤
+	메시지 출력하고 프로그램 수행이 완료된 후에 분석할 수 있도록 years 테이블에
+	정보를 입력하는 프로그램을 작성합니다.(근무연수는 소수점은 버리세요)
+
+SQL> create table years(id number, name varchar2(30), sal number, year number);
+
+<화면 출력>
+
+:
+201, Hartstein, 13000, 04/02/17, 12
+202, Fay, 6000, 05/08/17, 10
+203, Mavris, 6500, 02/06/07, 13
+사원 203 근무연수는 13 년이고 급여는 6500 입니다.
+204, Baer, 10000, 02/06/07, 13
+205, Higgins, 12008, 02/06/07, 13
+206, Gietz, 8300, 02/06/07, 13
+사원 206 근무연수는 13 년이고 급여는 8300 입니다.
+:
+SQL> select * from years;
+
+
+declare
+	cursor emp_cur is
+		select employee_id,last_name, salary, hire_date,trunc(months_between(sysdate,hire_date)/12) year
+		from employees;
+	type v_tab is table of emp_cur%rowtype;
+	b_tab v_tab;
+
+	i_vaild exception;
+begin
+	select employee_id,last_name, salary, hire_date,trunc(months_between(sysdate,hire_date)/12) year
+	bulk collect into b_tab
+	from employees;
+	
+	for i in b_tab.first..b_tab.last loop
+		begin
+			dbms_output.put_line(b_tab(i).employee_id || ' , ' || b_tab(i).last_name|| ' , ' || b_tab(i).salary||' , '||b_tab(i).hire_date||' , '||b_tab(i).year);
+			if b_tab(i).year>=13 and b_tab(i).salary<10000 then
+				raise i_vaild;
+			end if;
+		exception 
+			when i_vaild then
+				dbms_output.put_line('사원 '||b_tab(i).employee_id||' 근무연수는 '||b_tab(i).year||' 이고 급여는 '||b_tab(i).salary||' 입니다.');
+				insert into years(id,name,sal,year)
+				values(b_tab(i).employee_id,b_tab(i).last_name,b_tab(i).salary,b_tab(i).year);
+		end;
+	end loop;
+	rollback;
+end;
+/
+
+
+[문제36] 사원번호를 입력값으로 받아서 그사원의 급여를 10%인상하는
+	 프로시저를 생성하세요. 프로시저이름은 raise_sal로 생성하세요.
+
+create or replace procedure raise_sal
+(p_id in number)
+is
+	v_rec employees%rowtype;
+begin
+	update employees
+	set salary=salary*1.1
+	where employee_id=p_id;
+
+exception
+	when no_data_found then
+		dbms_output.put_line('사원값을 다시 입력하여 주십시오.');
+end;
+/
+
+[문제37] 사원번호를 입력 값으로 받아서 그 사원의 이름, 급여, 부서 이름을 출력하는 query_emp 프로시저 생성하세요.
+       단 100번 사원이 입력 값으로 들어오면 프로그램은 아무런 작업하지 않고 종료 될 수 있어야 합니다. 
+       또한 사원이 없을 경우 예외 사항 처리해주세요.
+
+
+SQL> execute query_emp(100)
+
+PL/SQL procedure successfully completed.
+
+
+SQL> execute query_emp(101)
+사원 이름: Kochhar 사원 급여: 17000 사원 부서 이름: Executive
+
+PL/SQL procedure successfully completed.
+
+
+SQL> execute query_emp(300)
+300 존재하지 않는 사원입니다.
+
+PL/SQL procedure successfully completed.
+
+create or replace procedure query_emp(p_id in number)
+is
+
+	e_100	exception; 
+	v_name employees.last_name%type;
+	v_sal employees.salary%type;
+	v_dept_name departments.department_name%type;
+	
+begin
+	
+	if p_id=100 then
+		raise e_100;
+	else	
+		select e.last_name,e.salary,d.department_name
+		into v_name, v_sal, v_dept_name
+		from employees e, departments d
+		where e.department_id=d.department_id
+		and e.employee_id=p_id;
+		dbms_output.put_line('사원 이름: '|| v_name ||' 사원 급여: '|| v_sal ||' 부서이름 : '|| v_dept_name);
+	end if;		 
+
+exception
+	
+	when e_100 then null;	 /* null 할시 강제종료 */
+
+	when no_data_found then
+		dbms_output.put_line(p_id||' 존재하지 않는 사원입니다.');
+
+	when others then
+    		dbms_output.put_line(sqlerrm);
+
+end;
+/
+
+# 에러 확인 : show error;
+# 간접액세스를 하기 위한 프로그램 : 다 보여줄 필요는 없고 간단한 값들로만 나오게 만든 프로그램
+
+# end query_emp;- end 할 시 뒤에 block이름을 적어서 사용이 가능하다. (정리할 때 사용하면 좋다.)
+
+create or replace procedure query_emp(p_id in number)
+is
+
+
+	v_name employees.last_name%type;
+	v_sal employees.salary%type;
+	v_dept_name departments.department_name%type;
+	
+begin
+	
+	if p_id=100 then
+		return; /* 무조건 종료*/
+	else	
+		select e.last_name,e.salary,d.department_name
+		into v_name, v_sal, v_dept_name
+		from employees e, departments d
+		where e.department_id=d.department_id
+		and e.employee_id=p_id;
+		dbms_output.put_line('사원 이름: '|| v_name ||' 사원 급여: '|| v_sal ||' 부서이름 : '|| v_dept_name);
+	end if;		 
+
+exception
+	
+
+	when no_data_found then
+		dbms_output.put_line(p_id||' 존재하지 않는 사원입니다.');
+
+	when others then
+    		dbms_output.put_line(sqlerrm);
+
+end;
+/
+
+[문제38] 사원번호를 입력값으로 받아서 그 사원의 근무개월수를 출력하고 근무개월수가
+180개월 이상이면 급여를 20% 인상한 급여로 수정, 
+179개월 보다 작거나 같고 150개월 보다 크거나 같으면  10%인상한 급여로 수정,
+150개월 미만인 근무자는 아무 작업을 수행하지 않는 프로그램을 작성하세요.
+테스트가 끝나면 rollback 합니다.
+
+begin
+  sal_update_proc(100);
+  rollback;
+end;
+/
+
+
+100 사원은 근무개월수가 166 입니다. 이전 급여는 24000 수정된 급여는 26400 입니다.
+
+
+begin
+  sal_update_proc(103);
+  rollback;
+end;
+/
+
+
+103 사원은 근무개월수가 136 입니다. 150 개월 미만입니다.9000 급여는 수정 안됩니다.
+
+
+create or replace procedure sal_update_proc(p_id in number)
+
+is
+	v_mon number;
+	v_sal number;
+	u_sal number;
+begin
+	select trunc(months_between(sysdate,hire_date),0), salary
+	into v_mon, v_sal
+	from employees
+	where employee_id=p_id;
+	
+	if v_mon>=180 then
+		update employees set salary=salary*1.2 where employee_id=p_id
+		returning salary into u_sal;
+		dbms_output.put_line(p_id||' 사원은 근무개월수가 '||v_mon||' 입니다. 이전급여는 '|| v_sal ||' 수정된 급여는 '|| u_sal ||' 입니다.');
+	elsif v_mon>=150 and v_mon<180 then
+		update employees set salary=salary*1.1 where employee_id=p_id
+		returning salary into u_sal;
+		dbms_output.put_line(p_id||' 사원은 근무개월수가 '||v_mon||' 입니다. 이전급여는 '|| v_sal ||' 수정된 급여는 '|| u_sal ||' 입니다.');
+	else
+		dbms_output.put_line(p_id||' 사원은 근무개월수가 '||v_mon||' 입니다. 150 개월 미만입니다. '|| v_sal ||' 급여는 수정 안됩니다.');
+	end if;
+end;
+/ 
+
+[문제39] 급여에 3.3%를 계산하는 tax 함수를 생성하세요.
+
+SQL> SELECT employee_id, last_name, salary, tax(salary) FROM employees;
+
+EMPLOYEE_ID LAST_NAME                SALARY TAX(SALARY)
+----------- -------------------- ---------- -----------
+        100 King                    35138.4   1159.5672
+        101 Kochhar                   22627     746.691
+        102 De Haan                 24889.7    821.3601
+        103 Hunold                     9000         297
+
+
+create or replace function tax
+(p_id in number)
+return number
+is
+begin
+	return (p_id*0.033); -- return에 해당되는 결과 값을 그냥 넣으면 된다.
+end;
+/
+
+[문제40] 급여를 계산하는 get_annual_comp 함수를 생성하세요.
+
+SQL> SELECT employee_id,
+     (salary*12) + (commission_pct*salary*12) ann_sal,
+     get_annual_comp(salary,commission_pct) ann_sal2
+     FROM employees;
+
+EMPLOYEE_ID    ANN_SAL   ANN_SAL2  
+----------- ---------- ---------- 
+        100                288000    
+        101                204000     
+        102                204000    
+        103                108000     
+     
+create or replace function get_annual_comp
+(p_sal in number,
+p_comm in number)
+return number
+is
+begin
+	if p_comm is null then
+		return(p_sal*12);
+	else
+		return((p_sal*12)+(p_comm*p_sal*12));
+	end if;
+end;
+/
+
+create or replace function get_annual_comp
+(p_sal in number,
+p_comm in number)
+return number
+is
+begin
+	return (nvl(p_sal,0)*12 + (nvl(p_sal,0)*nvl(p_comm,0)*12));
+
+end get_annual_comp;
+/
+
+
+
+
+[문제41] 급여를 계산하는 get_annual_comp 함수를 생성하세요. (nvl을 사용하지 않고 풀이 하시오)
+
+
+SQL> SELECT employee_id,
+     (salary*12) + (commission_pct*salary*12) ann_sal,
+     get_annual_comp(salary,commission_pct) ann_sal2
+     FROM employees;
+
+EMPLOYEE_ID    ANN_SAL   ANN_SAL2  
+----------- ---------- ---------- 
+        100                288000    
+        101                204000     
+        102                204000    
+
+create or replace function get_annual_comp
+(p_sal in number default 0,
+p_comm in number)
+return number
+is
+begin
+	if p_comm is null then
+		return(p_sal*12);
+	else
+		return((p_sal*12)+(p_comm*p_sal*12));
+	end if;
+end;
+/
+
+create or replace function get_annual_comp
+(p_sal in number default 0,
+p_comm in number default 0)
+return number
+is
+begin
+	if p_comm is null then
+		return(p_sal*12);
+	elif p_comm is not null and p_sal is not null then
+		return((p_sal*12)+(p_comm*p_sal*12));
+	end if;
+end;
+/
+
+[문제42] 사원번호를 입력값으로 받아서 그 사원의 근무 년수를 구하는 함수를 생성하세요.
+단 없는 사원번호가 들어오면 내가 만든 오류번호,메시지가 출력되도록 해야합니다.
+
+<함수 수행>
+
+SQL> execute dbms_output.put_line(get_year(100))
+12
+
+
+SQL> select employee_id, last_name, get_year(employee_id) years_func
+     from employees;
+
+EMPLOYEE_ID LAST_NAME  YEARS_FUNC
+----------- ---------- ---------- 
+        100 King               12       
+        101 Kochhar            10         
+        102 De Haan            15         
+        103 Hunold             10         
+     
+
+
+SQL> execute dbms_output.put_line(get_year(300))
+BEGIN dbms_output.put_line(get_year(300)); END;
+
+*
+ERROR at line 1:
+ORA-20000: 300번 사원은 존재하지 않습니다.
+ORA-06512: at "HR.GET_YEAR", line 14
+ORA-01403: no data found
+ORA-06512: at line 1
+
+
+create or replace function get_year
+(p_id in number)
+return number
+is
+	v_year number;
+begin
+	select trunc(months_between(sysdate,hire_date)/12)
+	into v_year
+	from employees
+	where employee_id=p_id;
+	return v_year;
+
+exception
+	when no_data_found then
+		raise_application_error(-20000, p_id||'번 사원은 존재하지 않습니다.', true);
+end;
+/
+
+[문제43] 부서코드를 입력값으로 받아서 부서이름을 return 하는 함수를 만들어주세요.
+부서코드가 없을 경우 '알수없는 부서'가 return해야 합니다.
+
+<함수 수행결과>
+
+SQL> select employee_id, last_name, department_id, dept_name_fuc(department_id) dept_name
+     from employees;
+
+EMPLOYEE_ID LAST_NAME            DEPARTMENT_ID DEPT_NAME
+----------- -------------------- ------------- --------------------
+        177 Livingston                      80 Sales
+        178 Grant                              알수없는 부서
+
+
+SQL> exec dbms_output.put_line(dept_name_fuc(20))
+Marketing
+
+PL/SQL procedure successfully completed.
+
+create or replace function dept_name_fuc
+(p_id number)
+return varchar2
+is
+	dept_name varchar2(50);
+begin
+	select department_name
+	into dept_name 
+	from departments
+	where department_id=p_id;
+
+	return initcap(dept_name);
+exception
+	when no_data_found then
+		return '알수없는 부서';
+end;
+/
+
+-- 문제점 : 부서 row 의 갯수만큼 함수가 돌아가기 때문에 성능상에 좋지 않다. 따라서 스칼라 서브쿼리를 사용하면 좋다. 
+
+<해결>
+
+# 함수 힌트 deterministic: return 절 밑에 쓰며, 스칼라쿼리식과 같은 기능을 한다. 즉, cache 기능을 통해 이미 들어온 값이라면 값을 계산하지 않고 cache안의 값을 return 해준다.
+
+create or replace function dept_name_fuc
+(p_id number)
+return varchar2
+deterministic 
+is
+	dept_name varchar2(50);
+begin
+	select department_name
+	into dept_name 
+	from departments
+	where department_id=p_id;
+
+	return initcap(dept_name);
+exception
+	when no_data_found then
+		return '알수없는 부서';
+end;
+/
+
+[문제44] 문자타입 컬럼 이지만 테이블에 있는 데이터는 숫자형식만 들어 가 있어야 하는데 그렇지 않는 데이터를 확인 하는 함수를 생성하세요. null 또는 문자가 들어 있으면 0출력 숫자는 1 출력하세요.
+
+#  데이터 정제 문제
+★★ 변수선언
+SQL> desc locations
+ Name                                      Null?    Type
+ ----------------------------------------- -------- -------------------------
+ LOCATION_ID                               NOT NULL NUMBER(4)
+ STREET_ADDRESS                                     VARCHAR2(40)
+ POSTAL_CODE                                        VARCHAR2(12)
+ CITY                                      NOT NULL VARCHAR2(30)
+ STATE_PROVINCE                                     VARCHAR2(25)
+ COUNTRY_ID                                         CHAR(2)
+
+
+SQL> select postal_code, as_number(postal_code)  from locations;
+
+POSTAL_CODE              AS_NUMBER(POSTAL_CODE)
+------------------------ ----------------------
+                                              0
+00989                                         1
+10934                                         1
+1689                                          1
+6823                                          1
+26192                                         1
+99236                                         1
+50090                                         1
+98199                                         1
+M5V 2L7                                       0
+YSW 9T2                                       0
+
+create or replace function as_number 
+(p_id in varchar2)
+return number
+is
+	v_num number;
+begin
+	v_num := to_number(p_id);
+	if v_num is null then
+		return 0;
+	else
+		return 1;
+	end if;
+exception
+	when others then
+		return 0;
+end;
+/
+
+
+[문제45] 1부터100까지 합을 구하는 함수를 생성하세요.
+단 인수값으로 0이 들어오면 전체 합을 구하고, 1이 들어오면 홀수만 합을 구하고, 
+2가 들어오면 짝수만 합을 구하고, 다른 숫자값이 들어오면 오류가 나도록 해야 합니다.
+
+# 개선 해보기
+
+<함수 호출>
+SQL> exec dbms_output.put_line(calc(0))
+5050
+
+PL/SQL procedure successfully completed.
+
+SQL> exec dbms_output.put_line(calc(1))
+2500
+
+PL/SQL procedure successfully completed.
+
+SQL> exec dbms_output.put_line(calc(2))
+2550
+
+PL/SQL procedure successfully completed.
+
+SQL> exec dbms_output.put_line(calc(3))
+BEGIN dbms_output.put_line(calc(3)); END;
+
+*
+ERROR at line 1:
+ORA-20000: 인수값으로 0(전체),1(홀수),2(짝수)값만 입력값입니다.
+ORA-06512: at "HR.CALC", line 23
+ORA-06512: at line 1
+
+create or replace function calc
+(p_num in number)
+return number
+is
+	v_num number := 0;
+	num_err exception;
+begin
+	for i in 1..100 loop
+		if p_num=0 then
+			v_num := v_num+i;
+		elsif p_num=1 and mod(i,2)=1 then
+			v_num := v_num+i;
+		elsif p_num=2 and mod(i,2)=0 then
+			 v_num := v_num+i;
+		else
+			raise num_err;
+		end if;
+	end loop;
+	return v_num; 
+exception
+	when num_err then 
+		raise_application_error(-20000, '인수값으로는 0(전체), 1(홀수), 2(짝수)값만 입력값입니다.', false);
+end;
+
+[문제46] 사원번호를 입력값으로 받아서 그 사원의 소득순위를 기준으로 1위 ~ 3위 고소득, 4위 ~ 8위 중소득, 그외 순위는 저소득이라는 값을 출력한다.
+
+
+SQL> select employee_id, salary, income(employee_id) income
+     from employees;
+
+EMPLOYEE_ID     SALARY INCOME
+----------- ---------- ----------
+        100      24000 고소득
+        102      17000 고소득
+        101      17000 고소득
+        145      14000 고소득
+        146      13500 중소득
+        108    13208.8 중소득
+        205      12008 중소득
+
+create or replace function income
+(p_id in number)
+return varchar2
+is	
+	v_rank number(10);
+	v_msg varchar2(20);
+begin
+	select sal_rank 
+	into v_rank
+	from(select employee_id,dense_rank() over (order by salary desc) sal_rank
+		from employees)
+	where employee_id=p_id;
+
+	v_msg := case when v_rank<=3 then '고소득'
+			when v_rank>=4 and v_rank<=8 then '중소득'
+			else '저소득' end;
+	return v_msg;	
+end;
+/
+
+create or replace function income
+(p_id in number)
+return varchar2
+is
+   v_num number;
+begin
+	select rank
+	into v_num
+	from (select employee_id,dense_rank() over(order by salary desc) as rank
+		from employees)
+ 	where employee_id=p_id;
+
+           if v_num between 1 and 3 then
+                   return '고소득';
+           elsif v_num between 4 and 8 then
+                   return '중소득';
+           else
+                   return '저소득';
+           end if;
+end;
+/
+
+create or replace function income
+(p_id in number)
+return varchar2
+is
+   type a_num is record(a number, b number);
+   type b_num is table of a_num;
+   v_num b_num;
+begin
+	select employee_id,dense_rank() over(order by salary desc) as rank
+	bulk collect into v_num
+	from employees
+	order by employee_id;
+ 	
+        if v_num(p_id-99).b=1 or v_num(p_id-99).b=2 or v_num(p_id-99).b=3 then
+		return '고소득';
+	elsif v_num(p_id-99).b=4 or v_num(p_id-99).b=5 or v_num(p_id-99).b=6 or v_num(p_id-99).b=7 or v_num(p_id-99).b=8 then
+		return '중소득';
+	else
+		return '저소득';
+	end if;	
+end;
+/
+
+[문제47] 사원번호를 입력값으로 받아서 사번, 이름, 부서이름을 출력하는 프로시저를 생성하세요.
+
+SQL> exec id_proc(100)
+사원번호 : 100  사원 이름 : King  부서이름 : Executive
+
+PL/SQL procedure successfully completed.
+
+SQL> exec id_proc(200)
+사원번호 : 200  사원 이름 : Whalen  부서이름 : Administration
+
+PL/SQL procedure successfully completed.
+
+SQL> exec id_proc(300)
+300사원은 존재하지 않습니다.
+
+PL/SQL procedure successfully completed.
+
+
+
+create or replace procedure id_proc(p_id in number)
+is
+	type v_rec is record(name varchar2(50), dept_name varchar2(100));
+	b_rec v_rec;
+begin
+	select e.last_name, d.department_name
+	into b_rec
+	from employees e, departments d
+	where e.department_id=d.department_id
+	and e.employee_id=p_id;
+
+	dbms_output.put_line('사원번호 : '||p_id||' 사원 이름 : ' ||b_rec.name||' 부서이름 : '||b_rec.dept_name);
+
+exception
+	when no_data_found then
+		dbms_output.put_line(p_id||'사원은 존재하지 않습니다.');
+	when others then
+		dbms_output.put_line(sqlerrm);  
+end id_proc;
+/
+
+[문제48] 사원이름을 입력값으로 받아서 사원번호, 이름, 부서이름을 출력하는 프로시저를 생성하세요.
+
+SQL> exec name_proc('de haan')
+사원번호 : 102  사원 이름 : De Haan  부서이름 : Executive
+
+PL/SQL procedure successfully completed.
+
+SQL> exec name_proc('king')
+사원번호 : 156  사원 이름 : King  부서이름 : Sales
+사원번호 : 100  사원 이름 : King  부서이름 : Executive
+
+PL/SQL procedure successfully completed.
+
+SQL> exec name_proc('hong')
+hong 사원은 존재하지 않습니다.
+
+PL/SQL procedure successfully completed.
+
+create or replace procedure name_proc(p_name in varchar2)
+is
+	type v_rec is record(id employees.employee_id%type, dept_name departments.department_name%type);
+	type b_tab is table of v_rec;
+	v_tab b_tab;
+begin
+	select e.employee_id, (select department_name
+			       from departments
+			       where  e.department_id=department_id)
+	bulk collect into v_tab
+	from employees e
+	where e.last_name=initcap(p_name);
+
+	for i in v_tab.first..v_tab.last loop
+		dbms_output.put_line('사원번호 : '||v_tab(i).id||' 사원 이름 : ' ||initcap(p_name)||' 부서이름 : '||v_tab(i).dept_name);
+	end loop;
+exception
+	when others then
+		dbms_output.put_line(p_name||' 사원은 존재하지 않습니다.');
+
+end name_proc;
+/
+
+[문제49] 사원번호 또는 사원이름을 입력값으로 받아서 사원번호, 이름, 부서이름을 출력하는 패키지를 생성하세요.
+       
+
+SQL> execute emp_find.find(100)
+사원번호: 100 사원이름: King 부서이름: Executive
+
+PL/SQL procedure successfully completed.
+
+SQL> execute emp_find.find(500)
+500사원은 존재하지 않습니다.
+
+PL/SQL procedure successfully completed.
+
+
+SQL> execute emp_find.find('king')
+사원번호: 156 사원이름: King 부서이름: Sales
+사원번호: 100 사원이름: King 부서이름: Executive
+
+PL/SQL procedure successfully completed.
+
+SQL> execute emp_find.find('de haan')
+사원번호: 102 사원이름: De Haan 부서이름: Executive
+
+PL/SQL procedure successfully completed.
+
+SQL> execute emp_find.find('hong')
+Hong사원은 존재하지 않습니다.
+
+PL/SQL procedure successfully completed.
+
+create or replace package emp_find
+is
+	procedure find(p_id number);
+	procedure find(p_name varchar2);
+end emp_find;
+/
+
+create or replace package body emp_find
+is
+	procedure find(p_id number)
+	is
+		type v_rec is record(name varchar2(50), dept_name varchar2(100));
+		b_rec v_rec;
+	begin
+		select e.last_name, d.department_name
+		into b_rec
+		from employees e, departments d
+		where e.department_id=d.department_id
+		and e.employee_id=p_id;
+
+		dbms_output.put_line('사원번호 : '||p_id||' 사원 이름 : ' ||b_rec.name||' 부서이름 : '||b_rec.dept_name);
+	exception
+		when no_data_found then
+			dbms_output.put_line(p_id||'사원은 존재하지 않습니다.');
+		when others then
+			dbms_output.put_line(sqlerrm);  
+	end find;
+		
+	
+	procedure find(p_name varchar2)
+	is
+		type v_rec is record(id employees.employee_id%type, dept_name departments.department_name%type);
+		type b_tab is table of v_rec;
+		v_tab b_tab;
+	begin
+		select e.employee_id, (select department_name
+				       from departments
+				       where  e.department_id=department_id)
+		bulk collect into v_tab
+		from employees e
+		where e.last_name=initcap(p_name);
+
+		for i in v_tab.first..v_tab.last loop
+			dbms_output.put_line('사원번호 : '||v_tab(i).id||' 사원 이름 : ' ||initcap(p_name)||' 부서이름 : '||v_tab(i).dept_name);
+		end loop;
+	exception
+		when others then
+			dbms_output.put_line(p_name||' 사원은 존재하지 않습니다.');
+	end find;
+end emp_find;
+/
+
+[문제50] 사원들의 급여를 10% 인상하는 프로그램을 생성해주세요. 
+
+
+declare
+   v_num  emp_pkg.numlist := emp_pkg.numlist(100,103,107,110,112,115,160,170,180,190,200);
+begin 
+    emp_pkg.update_sal(v_num);
+end;
+/
+
+사원번호 : 100        사원이름 : King       수정 급여 : 29040
+사원번호 : 103        사원이름 : Hunold     수정 급여 : 9900
+사원번호 : 107        사원이름 : Lorentz    수정 급여 : 4620
+사원번호 : 110        사원이름 : Chen       수정 급여 : 9020
+사원번호 : 112        사원이름 : Urman      수정 급여 : 8580
+사원번호 : 115        사원이름 : Khoo       수정 급여 : 3410
+사원번호 : 160        사원이름 : Doran      수정 급여 : 8250
+사원번호 : 170        사원이름 : Fox        수정 급여 : 10560
+사원번호 : 180        사원이름 : Taylor     수정 급여 : 3520
+사원번호 : 190        사원이름 : Gates      수정 급여 : 3190
+사원번호 : 200        사원이름 : Whalen     수정 급여 : 5808
+
+
+create or replace package emp_pkg
+is
+	type numlist is table of number;
+	procedure update_sal(v_num in numlist);
+
+end emp_pkg;
+/
+
+create or replace package body emp_pkg
+is
+	procedure update_sal(v_num in numlist)
+	is
+		type v_rec is record(id number, name varchar2(50), sal number);
+		type b_tab is table of v_rec;
+		v_tab b_tab;
+	begin		
+		forall i in v_num.first..v_num.last 
+			update employees 
+			set salary=salary*1.1 
+			where employee_id=v_num(i)
+			returning employee_id, last_name, salary bulk collect into v_tab;
+		
+		for i in v_tab.first..v_tab.last loop
+			dbms_output.put_line('사원번호 : ' || v_tab(i).id||'사원이름 : '||v_tab(i).name||'수정 급여 : '||v_tab(i).sal);
+		end loop;
+	end update_sal;
+end emp_pkg;
+/
+
+[문제51] 배열변수에 값을 비교하는 익명블록 프로그램을 작성하세요. 
+
+v_1 := 1,2,3,4,5
+v_2 := 1,3
+
+<화면결과>
+
+2 없는 값입니다.
+4 없는 값입니다.
+5 없는 값입니다.
+
+declare
+	type v_num is table of number;
+	v_1 v_num := v_num(1,2,3,4,5);
+	type b_num is table of number;
+	v_2 b_num := b_num(1,3);
+begin
+	for i in v_1.first..v_1.last loop
+		for j in v_2.first..v_2.last loop
+			if v_1(i)=v_2(j) then /* 값의 비교 */ 
+				exit;
+			elsif j=v_2.last then  /* index 비교 , 마지막까지 비교를 했다면 인덱스가 마지막에 간 것을 인식해야한다. */
+				dbms_output.put_line(v_1(i)||' 없는 값입니다.'); 
+			end if;	
+		end loop;	
+	end loop;
+end;
+/
+
+[문제52] 사원들의 급여를 10% 인상하는 프로그램을 생성해주세요.
+
+
+declare
+   v_num  emp_pkg.numlist := emp_pkg.numlist(100,103,107,110,112,115,160,170,250,180,190,200,300);
+begin 
+    emp_pkg.update_sal(v_num);
+    rollback;
+end;
+/
+
+
+사원번호 : 100        사원이름 : King       수정 급여 : 29040
+사원번호 : 103        사원이름 : Hunold     수정 급여 : 9900
+사원번호 : 107        사원이름 : Lorentz    수정 급여 : 4620
+사원번호 : 110        사원이름 : Chen       수정 급여 : 9020
+사원번호 : 112        사원이름 : Urman      수정 급여 : 8580
+사원번호 : 115        사원이름 : Khoo       수정 급여 : 3410
+사원번호 : 160        사원이름 : Doran      수정 급여 : 8250
+사원번호 : 170        사원이름 : Fox        수정 급여 : 10560
+사원번호 : 180        사원이름 : Taylor     수정 급여 : 3520
+사원번호 : 190        사원이름 : Gates      수정 급여 : 3190
+사원번호 : 200        사원이름 : Whalen     수정 급여 : 5808
+250 처리되지 않는 값입니다.
+300 처리되지 않는 값입니다.
+
+create or replace package emp_pkg
+is
+	type numlist is table of number;
+	procedure update_sal(v_num in numlist);
+
+end emp_pkg;
+/
+
+create or replace package body emp_pkg
+is
+	procedure update_sal(v_num in numlist)
+	is
+		type v_rec is record(id number, name varchar2(50), sal number);
+		type b_tab is table of v_rec;
+		v_tab b_tab;
+	begin		
+		forall i in v_num.first..v_num.last 
+			update employees 
+			set salary=salary*1.1 
+			where employee_id=v_num(i)
+			returning employee_id, last_name, salary bulk collect into v_tab;
+
+		for i in v_tab.first..v_tab.last loop
+			dbms_output.put_line('사원번호 : ' || v_tab(i).id||'사원이름 : '||v_tab(i).name||'수정 급여 : '||v_tab(i).sal);
+		end loop;
+
+		for j in v_num.first..v_num.last loop 
+			for i in v_tab.first..v_tab.last loop
+				if v_num(j)=v_tab(i).id then
+					exit;
+				elsif i=v_tab.last then	
+					dbms_output.put_line(v_num(j)||' 처리되지 않는 값입니다.');
+				end if;
+			end loop;
+		end loop;
+	end update_sal;
+end emp_pkg;
+/
+
+[문제 53] 입력값으로 받은 숫자들의 합을 구하는 함수, 평균을 구하는 함수를 패키지에서 생성하세요.
+
+declare
+ v_num agg_pack.num_type := agg_pack.num_type(10,5,2,1,8,9,20,21);
+begin
+  dbms_output.put_line('합 : '||agg_pack.sum_fc(v_num));
+  dbms_output.put_line('평균 : '||agg_pack.avg_fc(v_num));
+end;
+/
+
+합 : 76
+평균 : 9.5
+
+# package에 타입을 설정해서 사용해야 배열 값을 사용하는 것이 가능하다.
+
+create or replace package agg_pack 
+is
+	type num_type is table of number;
+
+	function sum_fc(p_num in num_type) return number;
+	function avg_fc(p_num in num_type) return number;
+
+end agg_pack;
+/
+
+create or replace package body agg_pack
+is
+	function sum_fc(p_num in num_type)
+	return number
+	is
+		v_num number := 0;
+	begin
+		for i in p_num.first..p_num.last loop
+			v_num := v_num+p_num(i);
+		end loop;
+		return v_num;
+
+	end sum_fc;
+	
+	function avg_fc(p_num in num_type)
+	return number
+	is
+		d_num number := 0;
+	begin
+		d_num := agg_pack.sum_fc(p_num)/p_num.last;
+		return d_num;
+
+	end avg_fc;
+
+	
+end agg_pack;
+/
+[문제54] 10,10,10,20,20,40,40,50,50,50,60,60,60,30,30,30,30 빈도수를 배열을 이용해서 구하세요.
+
+<화면출력>
+
+10의 빈도수 3
+20의 빈도수 2
+30의 빈도수 4
+40의 빈도수 2
+50의 빈도수 3
+60의 빈도수 3
+
+
+declare
+	type v_tab is table of number;
+	b_tab v_tab := v_tab(10,10,10,20,20,40,40,50,50,50,60,60,60,30,30,30,30);
+	cn_10 number := 0;
+	cn_20 number := 0;
+	cn_30 number := 0;
+	cn_40 number := 0;
+	cn_50 number := 0;
+	cn_60 number := 0;
+begin
+	for i in b_tab.first..b_tab.last loop
+		if b_tab(i)=10 then
+			cn_10:=cn_10+1;
+		elsif b_tab(i)=20 then
+			cn_20:=cn_20+1;
+ 		elsif b_tab(i)=30 then
+			cn_30:=cn_30+1;
+		elsif b_tab(i)=40 then
+			cn_40:=cn_40+1;
+		elsif b_tab(i)=50 then
+			cn_50:=cn_50+1;
+		elsif b_tab(i)=60 then
+			cn_60:=cn_60+1;
+		end if;
+	end loop;
+		dbms_output.put_line('10의 빈도수 '||cn_10);
+		dbms_output.put_line('20의 빈도수 '||cn_20);
+		dbms_output.put_line('30의 빈도수 '||cn_30);
+		dbms_output.put_line('40의 빈도수 '||cn_40);
+		dbms_output.put_line('50의 빈도수 '||cn_50);
+		dbms_output.put_line('60의 빈도수 '||cn_60);
+		
+ 
+end;
+/
+
+declare
+	type v_tab is table of number;
+	b_tab v_tab := v_tab(10,10,10,20,20,40,40,50,50,50,60,60,60,30,30,30,30);
+	cn number := 1;
+	temp number := 0;
+begin
+	for i in b_tab.first..b_tab.last-1 loop
+		for j in b_tab.first+i..b_tab.last loop
+			if b_tab(i)>b_tab(j) then
+				temp := b_tab(j);
+				b_tab(j) := b_tab(i);		
+				b_tab(i) := temp;
+			end if;
+		end loop;
+	end loop;
+	
+	for j in b_tab.first..b_tab.last loop
+		  if b_tab(j)=b_tab(j+1) then
+                    cn := cn+1;
+            elsif b_tab(j)<>b_tab(j+1) then
+                    dbms_output.put_line(b_tab(j)||'의 빈도수 '||cn);
+                    cn := 1;
+            end if;
+	end loop;
+
+exception
+	when others then
+		dbms_output.put_line(b_tab(b_tab.last)||'의 빈도수 '||cn);
+end;
+/
+
+
+
+
+declare
+ type num_type is table of number;
+ v_tab num_type := num_type(10,20,10,20,40,10,40,50,50,50,60,60,60,30,30,30,30);
+ type id_type is table of number index by pls_integer;
+ v_num id_type;
+ v_next pls_integer;
+begin /* 빈도수 배열방 생성*/
+  for i in v_tab.first..v_tab.last loop
+	if v_num.exists(v_tab(i)) then
+		v_num(v_tab(i)) := v_num(v_tab(i)) + 1;
+	else
+		v_num(v_tab(i)) := 1;
+	end if;
+  end loop; 		
+ 
+  dbms_output.put_line(v_num.first|| '의 빈도수 ' || v_num(v_num.first)); /* job_id로 하게되거나 되면 다음 방을 찾으러 갈때 즉, sequence한 값이 아니므로 next를 사용해야한다.*/
+  v_next := v_num.first; /* 다음 방 번호를 알기 위해서 선언 */
+  
+  for i in 2..v_num.count loop /* count를 쓰는 것은 마지막 방까지를 count 하기위해 사용한다.*/
+   dbms_output.put_line( v_num.next(v_next)||'의 빈도수 '||v_num(v_num.next(v_next)));
+   v_next := v_num.next(v_next);/* 다음값을 count 하기위해 사용*/
+  end loop;
+end;
+/
+
+[문제55] 배열 변수에  20, 9, 8, 200,10, 3, 7, 11,100,101,210,5 값들이 쌓여 있습니다.
+         최대값을 구하는 프로그램을 작성하세요.
+
+declare
+	type v_tab is table of number;
+	b_tab v_tab := v_tab(20,9,8,200,10,3,7,11,100,101,210,5);
+	cn number := 1;
+	temp number := 0;
+begin
+	for i in b_tab.first..b_tab.last-1 loop
+		for j in b_tab.first+i..b_tab.last loop
+			if b_tab(i)>b_tab(j) then
+				temp := b_tab(j);
+				b_tab(j) := b_tab(i);		
+				b_tab(i) := temp;
+			end if;
+		end loop;
+	end loop;
+
+	dbms_output.put_line(b_tab(b_tab.last));
+end;
+/
+
+[문제56] 배열 변수에  20, 9, 8, 200,10, 3, 7, 11,100,101,210,5 값들이 쌓여 있습니다. 
+	최소값을 구하는 프로그램을 작성하세요.
+
+declare
+	type v_tab is table of number;
+	b_tab v_tab := v_tab(20,9,8,200,10,3,7,11,100,101,210,5);
+	cn number := 1;
+	temp number := 0;
+begin
+	for i in b_tab.first..b_tab.last-1 loop
+		for j in b_tab.first+i..b_tab.last loop
+			if b_tab(i)>b_tab(j) then
+				temp := b_tab(j);
+				b_tab(j) := b_tab(i);		
+				b_tab(i) := temp;
+			end if;
+		end loop;
+	end loop;
+
+	dbms_output.put_line(b_tab(b_tab.first));
+end;
+/
+
+[문제57] 복제 테이블을 생성한후 emp_source 테이블에 DML이 발생하면 emp_target값도 함께 수행되도록 해주세요.
+
+drop table emp_target purge;
+drop table emp_source purge;
+
+create table emp_target
+(id number, name varchar2(10), day timestamp default systimestamp, sal number);
+
+create table emp_source
+(id number, name varchar2(10), day timestamp default systimestamp, sal number);
+
+
+SQL> insert into emp_source(id,name,day,sal) values(100,'ora1',default,1000);
+
+1 row created.
+
+SQL> commit;
+
+Commit complete.
+
+SQL>  select * from emp_source;
+
+        ID NAME                 DAY                                                       SAL
+---------- -------------------- -------------------------------------------------- ----------
+       100 ora1                 15/07/23 17:15:21.799000                                 1000
+
+SQL> select * from emp_target;
+
+        ID NAME                 DAY                                                       SAL
+---------- -------------------- -------------------------------------------------- ----------
+       100 ora1                 15/07/23 17:15:21.799000                                 1000
+
+SQL> update emp_source
+  2  set sal = 2000
+  3  where id = 100;
+
+1 row updated.
+
+SQL> select * from emp_source;
+
+        ID NAME                 DAY                                                       SAL
+---------- -------------------- -------------------------------------------------- ----------
+       100 ora1                 15/07/23 17:15:21.799000                                 2000
+
+SQL> select * from emp_target;
+
+        ID NAME                 DAY                                                       SAL
+---------- -------------------- -------------------------------------------------- ----------
+       100 ora1                 15/07/23 17:15:21.799000                                 2000
+
+SQL> update emp_source
+  2  set name = 'oracle'
+  3  where id = 100;
+
+1 row updated.
+
+SQL> select * from emp_source;
+
+        ID NAME                 DAY                                                       SAL
+---------- -------------------- -------------------------------------------------- ----------
+       100 oracle               15/07/23 17:15:21.799000                                 2000
+
+SQL> select * from emp_target;
+
+        ID NAME                 DAY                                                       SAL
+---------- -------------------- -------------------------------------------------- ----------
+       100 oracle               15/07/23 17:15:21.799000                                 2000
+
+SQL> insert into emp_source(id,name,day,sal) values(2,user,default,3000);
+
+1 row created.
+
+SQL> select * from emp_source;
+
+        ID NAME                 DAY                                                       SAL
+---------- -------------------- -------------------------------------------------- ----------
+       100 oracle               15/07/23 17:15:21.799000                                 2000
+         2 HR                   15/07/23 17:18:20.248000                                 3000
+
+SQL> select * from emp_target;
+
+        ID NAME                 DAY                                                       SAL
+---------- -------------------- -------------------------------------------------- ----------
+       100 oracle               15/07/23 17:15:21.799000                                 2000
+         2 HR                   15/07/23 17:18:20.248000                                 3000
+
+SQL> delete from emp_source where id = 2;
+
+1 row deleted.
+
+SQL> select * from emp_source;
+
+        ID NAME                 DAY                                                       SAL
+---------- -------------------- -------------------------------------------------- ----------
+       100 oracle               15/07/23 17:15:21.799000                                 2000
+
+SQL> select * from emp_target;
+
+        ID NAME                 DAY                                                       SAL
+---------- -------------------- -------------------------------------------------- ----------
+       100 oracle               15/07/23 17:15:21.799000                                 2000
+
+
+SQL> rollback;
+
+# 트리거 안에서는 절대 commit; rollback; 을 쓰면 안된다. : 사용한 순간 앞에 dml 까지 모두 영향을 주기 때문에 사용할수 없다. 
+
+drop table emp_target purge;
+drop table emp_source purge;
+
+create table emp_target
+(id number, name varchar2(30), day timestamp default systimestamp, sal number);
+
+create table emp_source
+(id number, name varchar2(30), day timestamp default systimestamp, sal number);
+
+insert into emp_source(id,name,day,sal) values(100,'ora1',default,1000);
+
+create or replace trigger emp_trigger
+after delete or insert or update on emp_source
+for each row
+begin
+	if inserting then
+		insert into emp_target(id, name, day, sal) 
+		values(:new.id, :new.name, default, :new.sal); 
+	elsif deleting then
+		delete from emp_target where id=:old.id;
+	elsif updating('name') then
+		update emp_target
+		set name=:new.name
+		where id=:old.id;
+	elsif updating('sal') then
+		update emp_target
+		set sal=:new.sal
+		where id=:old.id;
+	end if;
+end;
+/
+
+
+
+[문제58] 사원번호를 입력값으로 받아서 급여를 10% 인상하는 update_proc 프로시저를 생성하세요.
+green 계정을 생성한 후 시스템 권한 CREATE SESSION 부여하시고 update_proc 프로시저 execute 권한을 부여 합니다.
+사원테이블에 급여를 수정한 후 commit 발생하면 급여를 수정하는 사용자계정, 날짜, 사원번호, 이전 급여, 새로운 급여가 감사테이블(audit_emp_sal) 저장을 할 수 있는 트리거(sal_audit)를 생성하세요.
+(단 급여가 이전급여하고 새롭게 변경된 급여가 틀릴경우에만 감사테이블에 감사정보가 저장되도록하세요)
+
+<green 유저 생성>
+
+SQL> conn / as sysdba
+
+SQL> CREATE USER green
+     IDENTIFIED BY oracle
+     DEFAULT TABLESPACE users
+     TEMPORARY TABLESPACE temp
+     QUOTA UNLIMITED ON users
+     ACCOUNT UNLOCK;
+
+SQL> grant create session to green; -- 반드시 유저생성 권한을 준다.
+
+# 권한이 없다면 DBA에게 부탁을 해서 실행을한다. 
+
+<감사테이블 생성>
+
+SQL> conn hr/hr
+Connected.
+
+
+SQL> create table audit_emp_sal(name varchar2(30), day timestamp,id number, old_sal number, new_sal number);
+
+Table created.
+
+< sal_audit trigger생성>
+
+create or replace trigger sal_audit
+after update on employees
+for each row
+begin
+	if updating('salary') and :old.salary<>:new.salary then
+		insert into audit_emp_sal(name, day, id, old_sal, new_sal)
+		values(:new.last_name, sysdate, :new.employee_id, :old.salary, :new.salary);
+	end if;
+end;
+/
+
+< update_proc 생성>
+
+create or replace procedure update_proc
+(p_id in number)
+is
+begin
+	
+	
+	update employees
+	set salary=salary*1.1
+	where employee_id=p_id;
+	
+
+end;
+/
+
+< update_proc execute 권한 green유저에 부여>
+
+grant execute on update_proc to green; -- 프로시저 권한부여 
+
+<green 에서 작업>
+
+SQL> conn green/oracle
+Connected.
+
+SQL> select * from user_tab_privs;
+
+GRANTEE    OWNER      TABLE_NAME           GRANTOR    PRIVILEGE  GRANTA
+---------- ---------- -------------------- ---------- ---------- ------
+GREEN      HR         UPDATE_PROC          HR         EXECUTE    NO
+
+
+SQL> execute hr.update_proc(100)
+
+PL/SQL procedure successfully completed.
+
+SQL> rollback;
+
+Rollback complete.
+
+SQL> execute hr.update_proc(200)
+
+PL/SQL procedure successfully completed.
+
+SQL> commit;
+
+Commit complete.
+
+
+< 감사테이블 조회>
+
+SQL> conn hr/hr
+Connected.
+
+SQL> select * from audit_emp_sal;
+
+NAME       DAY                                    ID    OLD_SAL    NEW_SAL
+---------- ------------------------------ ---------- ---------- ----------
+GREEN      17/05/16 11:47:25.560000              200       4840       5324
+
+
+# commit 에서 자동으로 되는 이유 : 세션에서 commit을 하지 않으면 다른 세션에선 보이지 않기 때문에 commit 할시 다른세션에서 보인다.
+
+
+
+[문제59]사원들의 급여를 수정할 때 그 사원의 job_id 별 최저 임금에서 최고 임금 사이에 급여값으로만 입력, 수정하도록 하는
+프로그램을 작성하세요. 트리거를 이용하셔야 합니다.
+
+
+
+SQL> select * from jobs;
+
+JOB_ID               JOB_TITLE                                          MIN_SALARY MAX_SALARY
+-------------------- -------------------------------------------------- ---------- ----------
+AD_PRES              President                                               20080      40000
+AD_VP                Administration Vice President                           15000      30000
+AD_ASST              Administration Assistant                                 3000       6000
+FI_MGR               Finance Manager                                          8200      16000
+FI_ACCOUNT           Accountant                                               4200       9000
+AC_MGR               Accounting Manager                                       8200      16000
+AC_ACCOUNT           Public Accountant                                        4200       9000
+SA_MAN               Sales Manager                                           10000      20080
+SA_REP               Sales Representative                                     6000      12008
+PU_MAN               Purchasing Manager                                       8000      15000
+PU_CLERK             Purchasing Clerk                                         2500       5500
+ST_MAN               Stock Manager                                            5500       8500
+ST_CLERK             Stock Clerk                                              2008       5000
+SH_CLERK             Shipping Clerk                                           2500       5500
+IT_PROG              Programmer                                               4000      10000
+MK_MAN               Marketing Manager                                        9000      15000
+MK_REP               Marketing Representative                                 4000       9000
+HR_REP               Human Resources Representative                           4000       9000
+PR_REP               Public Relations Representative                          4500      10500
+
+19 rows selected.
+
+
+
+SQL> select job_id, salary from employees where employee_id = 115;
+
+JOB_ID                   SALARY
+-------------------- ----------
+PU_CLERK                   3100
+
+
+SQL> update employees
+  2  set salary = 3000
+  3  where employee_id = 115;
+
+1 row updated.
+
+SQL> rollback;
+
+Rollback complete.
+
+SQL> update employees
+  2  set salary = 6000
+  3  where employee_id = 115;
+update employees
+       *
+ERROR at line 1:
+ORA-20100: Invalid salary $6000. Salaries for job PU_CLERK must be between $2500 and $5500
+ORA-06512: at "HR.CHECK_SALARY", line 10
+ORA-06512: at "HR.CHECK_SALARY_TRG", line 2
+ORA-04088: error during execution of trigger 'HR.CHECK_SALARY_TRG'
+
+SQL> insert into employees(employee_id, last_name, email, hire_date, job_id, salary)
+  2  values(300, 'happy','happy',sysdate,'PU_CLERK',5000);
+
+1 row created.
+
+SQL> rollback;
+
+Rollback complete.
+
+SQL> insert into employees(employee_id, last_name, email, hire_date, job_id, salary)
+  2  values(300, 'happy','happy',sysdate,'PU_CLERK',6000);
+insert into employees(employee_id, last_name, email, hire_date, job_id, salary)
+            *
+ERROR at line 1:
+ORA-20100: Invalid salary $6000. Salaries for job PU_CLERK must be between $2500 and $5500
+ORA-06512: at "HR.CHECK_SALARY", line 10
+ORA-06512: at "HR.CHECK_SALARY_TRG", line 2
+ORA-04088: error during execution of trigger 'HR.CHECK_SALARY_TRG'
+
+
+
+create or replace trigger emp_sal
+after insert or update of salary on employees
+for each row
+declare
+	v_min	jobs.min_salary%type;
+	v_max   jobs.max_salary%type;
+	err exception;
+begin	
+	select min_salary,max_salary
+	into v_min,v_max
+	from jobs
+	where job_id=upper(:new.job_id); -- update와 insert는 new를 사용할 수 있으므로.
+
+	if :new.salary not between v_min and v_max then
+		raise err;
+	end if ; 
+	 
+exception
+	when err then 
+		raise_application_error(-20100,'Invalid salary $'||:new.salary||'. Salaries for job '||:new.job_id||' must be between $'||v_min||' and $'||v_max,true);
+
+end;
+/
+
+[문제60] 사원번호, 급여를 입력값으로 받아서 수정하는 프로그램이 생성하세요.
+단 사원들의 급여를 수정할 때 그 사원의 job_id 별 최저 임금에서 최고 임금 사이에 급여값으로만 수정해야합니다.
+
+SQL> drop trigger check_salary_trg; -- 59번 trigger 삭제
+
+SQL> exec emp_sal_proc(115,7000)
+BEGIN emp_sal_proc(115,7000); END;
+
+*
+ERROR at line 1:
+ORA-20100: Invalid salary $7000. Salaries for job PU_CLERK must be between $2500 and $5500
+ORA-06512: at "HR.EMP_SAL_PROC", line 15
+ORA-06512: at line 1
+
+
+
+create or replace procedure emp_sal_proc
+(p_num in number, b_num in number)
+is
+	v_job_id varchar2(50);
+	v_min number;
+	v_max number;
+begin
+	select j.job_id,j.min_salary,j.max_salary
+	into v_job_id,v_min,v_max
+	from employees e, jobs j
+	where e.job_id=j.job_id
+	and employee_id=p_num;
+
+	if b_num not between v_min and v_max then
+		raise_application_error(-20100,'Invalid salary $'||b_num||'. Salaries for job '||v_job_id||' must be between $'||v_min||' and $'||v_max,true);
+	else
+		update employees
+		set salary=b_num
+		where employee_id=p_num;
+	end if;
+end;
+/
+
+
+
+[문제61] PLSQL 수업을 수강하는 50명의 학생들을 대상으로 혈액형을 조사한 결과는 다
+음과 같다. 이 자료를 도수분포표로 설명하세요.
+
+
+B, A, B, A, A, B, O, A, A, A, 
+B, AB, B, AB, AB, A, A, O, AB, O, 
+B, O, B, B, A, A, O, A, A, AB, 
+B, O, B, B, B, A, AB, A, A, B, 
+B, B, O, B, O,B, A, A, AB, A, 
+
+
+A : 18
+AB : 7
+B : 17
+O : 8
+
+declare
+	type a is table of varchar2(100);
+	b a:=a('B', 'A', 'B', 'A', 'A', 'B', 'O', 'A', 'A', 'A', 'B', 'AB', 'B', 'AB', 'AB', 'A', 'A', 'O', 'AB', 'O', 'B', 'O', 'B', 'B', 'A', 'A', 'O', 'A', 'A', 'AB', 'B', 'O', 'B', 'B', 'B', 'A', 'AB', 'A', 'A', 'B', 'B', 'B', 'O', 'B', 'O','B', 'A', 'A', 'AB', 'A');
+	type c is table of number index by varchar2(100);
+	d c; 
+	e varchar2(100);
+begin
+	for i in b.first..b.last loop
+		if d.exists(b(i)) then
+			d(b(i)):=d(b(i))+1;
+		else
+			d(b(i)):=1;
+		end if;
+	end loop;
+
+	dbms_output.put_line(d.first||' : '||d(d.first));
+	e:=d.first;
+
+	for i in 2..d.count loop
+		dbms_output.put_line(d.next(e)||' : '||d(d.next(e)));
+		e:=d.next(e);
+	end loop;
+end;
+/
+
+
+
+
+
+

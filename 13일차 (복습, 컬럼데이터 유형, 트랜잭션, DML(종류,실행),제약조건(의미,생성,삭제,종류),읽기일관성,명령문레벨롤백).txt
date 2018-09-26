@@ -1,0 +1,507 @@
+# DBA 관련 명령어는 반드시 DBA창에서 수행해야한다.
+
+session - 접속 
+dictionary table - 사전(Dictionary), 맵(Map)이라고도 하며, 선이 없는 테이블이라고 생각하면 되며, 키-값(Key-Value, Name-Value) 구조로 저장됨
+                         키 값은 데이터가 저장되는 위치이며 이 키 값은 인덱스에 매칭되므로 키 값만 알고 있다면, 단 번에 접근할 수 있음
+
+
+select * from dba_users; -- 사전 뷰/간접 액세스 
+select * from user$; dictionary table view
+select * from dba_data_files;-- 데이터 저장경로
+select * from dba_temp_files;
+select * from dba_objects where owner='HR'; -- 반드시 대문자로 검색/저장 (데이터 관리자 objects)
+select * from dict; -- dictionary table 
+$-- dictionary table(사전테이블)
+
+
+권한(privilige) -- 특정한 sql문장을 수행할 수 있는 권리
+role--권한이 모아져 있는 object(집합) (예 manger role)
+
+DB에서 tablespace 논리적 공간이 물리적으로 저장하려면 datafile로 구성되어 있는데 이 파일은 RAM에 저장되면 갑자기 끄면 파일이 날라갈 수 있기 때문에
+HARD DISK에 저장해야 하는데 그걸 확인하는 것이 select * from dba_data_files; 이다.
+여기서 나오는 binary 파일은 열어 볼수 없다. (binary file: 이진수로 이루어진 파일로 실행명령어로 구성되어 있거나, 특정프로그램 판독으로 압축화/구조화 되있는 파일)
+
+# sort가 발생되는 경우 : 1. distict 2. 집합연산자 3. order by 4. (10G까진) group 함수 사용시 sort 발생
+
+필수 구성 - 1. temp--디스크를 조각으로 내어서 임시저장 2. system--정보저장 3.sysaux--성능 4. undotbs--위치정보
+users : sample user (HR이 저장되어 있음) -- 필수는 아니나 교육목적으로 만들어짐 
+
+
+# 유저를 만들 때 필수 절
+create user ora10 -- 유저이름
+identified by oracle; -- 패스워드
+
+create user 권한은 DBA에서만 가능하다.
+
+select * from dba_users where username='ORA10';  -- 유저이름이 ORA10 인 유저검색 
+
+# Defalut_Tablespace 지정하지 않으면 System에 저장이 되는데 System엔 oracle 정보가 저장되어 있기 때문에 좋지 않다. 따라서 다른곳을 지정해줘야 한다.
+
+# 유저 수정방법
+alter user ora10 default tablespace users; 
+
+alter user 유저이름 default tablespace 공간; 
+
+select * from dba_ts_quotas; -- 유저가 테이블 space를 사용할 수 있는 공간을 확인
+
+alter user ora10 quota 1M on users; -- 공간부여 , 8K 기준으로 row 를 해서 128개 나옴
+
+alter user ora10 quota unlimited on users; -- 무한으로 쓰려고 바꾸는 방법 (unlimited), maxbyte= -1 로 되어 있다면 무한대를 의미 , bytes: 사용공간
+
+alter user ora10 identified by ora10; -- 패스워드 변경 방법
+
+grant create session to ora10; -- session 권한을 준다
+select * from  dba_sys_privs where grantee='ORA10'; - 권한 확인 
+
+user_ (자기꺼 보는것),all_(남의 것)-- 남의 것도 권한을 주어야 볼 수 있다.
+
+alter user ora10 account lock; -- 계정을 잠그다.
+alter user ora10 account unlock; -- 계정을 풀다.
+
+다시 conn ora10/ora10 -- 계정을 잠궈진 상황을 볼 수 있다. 풀어달라고 요청을 하면 된다. (현장에선)
+
+테이블 - 기본데이터 저장공간 
+
+grant create table to ora10; -- 테이블 생성 권한을 요청해야 가능함 
+
+<권한 회수,부여 하는 거는 DBA 창에서만 가능하다>
+
+# table을 만들고 싶다면 table 권한과 quota 값을 받아야한다.
+
+grant create table to ora10;
+select * from users_ts_quota; -- 테이블 확인 및 quota 확인을 해야한다.
+
+table 생성 할 때 tablespace를 지정하지 않으면 default 지정된 값으로 가야한다. <그러므로 default 해주는 것이 중요하다.>
+
+# 데이터를 저장하는 object 는 table 이다.
+
+테이블 이름 , 컬럼의 이름 규칙,유저이름,object 이름
+- 무조건 문자로 시작해야한다.
+- 길이는 1 ~ 30 
+- 영문자 , 숫자, _, #,$
+- 대/소문자 구분이 되지 않는다 (무조건 대문자로 만들어 지기 때문에)
+- 동일한 유저가 소유한 다른 객체의 이름과 중복되면 안된다. (다른 소유자 끼리는 값은 상관이 없다)
+- 오라클 서버의 예약어는 사용할 수 없다. (예 sysdate,select 와 같은 명령어들)
+
+-- 한글로 가능하나 지역의 따라 되는 것이기에 다른 곳에서 보면 알 수 없으므로 영어로 하는 것이 좋다.
+
+# 컬럼의 데이터 유형
+
+1. varchar2(4000): 가변길이 문자 데이터 최소값 1 최대값 4000 (영어 1byte, 한글 2byte), 사이즈를 항상 표기해줘야 한다. 공간이 남으면 다른 곳에서 사용할 수 있도록 해준다.
+2. char : 고정길이 문자데이터 최소값,기본값 1byte, 최대값 2000byte 
+3. number(p,s) : 숫자 자릿수가 p, 소숫점 이하 자릿수가 s, p는 자릿수 1~38,number도 가변숫자 데이터라서 적지 않으면 최대 38자리 까지 적는 것이 가능하다.
+4. date : 날짜 데이터 타입
+5. long : 가변 문자 데이터 타입, 최대 2G까지 가능 (대형객체전용) -- 이제는 쓰지 않는다. clob 때문
+6. clob : 가변 문자 데이터 타입, 최대 4G (8부터 나옴)
+7. blob : 이진데이터, 최대 4G (이미지 정보 데이터를 넣어야 할 때 사용) -- 이미지를 dB에 가면 무리가 많이 가기 때문에 잘 사용하지 않는다.
+8. bfile : 외부파일에 저장된 이진데이터 , 최대 4G (포인터라 생각하면 됨)
+
+create table emp
+(id number(4),
+ name varchar2(10),
+ day date default sysdate
+) 
+tablespace users;
+
+# default 뒤에 값을 넣을 땐 앞의 데이터 타입에 맞는 값을 지정해서 넣으면 어느곳에서 사용해도 상관없다.
+
+# develop 과 run 각각 세션은 다르기 때문에 insert 값을 하더라도 확인이 되지 않기 때문에 commit을 하면 된다.
+
+# / + enter : run sql 에서 전 명령어 실행
+
+--field: row의 각 값들
+
+# default 값을 표현하는 방법 --보편적으론 첫번째 것을 많이 사용 (insert 안에 모든 컬럼값을 넣는게 약속(?) 되있으므로)
+
+1. 직접 default을 넣는다.
+예)  insert into emp(id,name,day) -- 트랜잭션 발생 , (rollback,commit 이 발생하지 않은 이상 계속 트랜잭션 발생)
+       values(2,'박찬호',default);
+
+2. default로 구성된 열 값을 뺀다.
+예) insert into emp(id,name)
+      values(3,'박지성');
+
+3. 데이터가 default 가 되어 있더라도 null 값으로 넣는다면 null이 우선순위가 높아 null이 실행된다.
+예) insert into emp(id,name,day)
+      values(4,'차두리',null);
+
+4. default가 선언되지 않은 곳에 default 값을 넣으면 null로 저장된다. (오류가 뜨지 않는다.) 
+예) insert into emp(id,name,day)
+      values(5,default,default);
+
+# 트랜잭션 반영은 insert를 시작한 곳부터 commit 하기 전까지 모두 반영한다.
+
+# update절 (update 테이블 이름 set 컬럼=필드값 where 조건)
+
+# update 반영 시 전체 행 값이 바뀔 수 있기 때문에 주의해야한다. 값을 수정한 후 그 전 값은 undo에 있다. 
+
+(★★★ 읽기 일관성: 한쪽은 수정값을 확인할 수 있으나 다른쪽에선 불가능하다. oracle에서만 가능하다.)
+
+update emp
+set day=sysdate - 10;
+
+--그래서 업데이트시 조건을 걸어서 모든 행의 값이 변하지 않도록 제어를 해야한다.
+
+update emp
+set day=sysdate - 10
+where id=4;
+
+update emp
+set name='손흥민'
+where id=5;
+
+-- 같이 수정하고 싶다면 , 를 통해 set절에서 표현하여 나타내면 실행 된다.
+
+insert into emp(id,name,day)
+values(6,null,null);
+commit;
+
+update emp 
+set name='나얼',day=default
+where id=6;
+
+# delete (delete from 테이블이름 where 조건절)
+
+delete from emp; -- 전체 테이블 삭제
+
+--delete 도 마찬가지고 commit,rollback을 하지 않으면 읽기일관성이 유지된다.
+--delete , insert 는 row단위, update는 field 단위 조작 언어이다.
+
+#  ★★ 트랜잭션 (transaction) : 논리적으로 DML을 하나로 묶어서 처리하는 작업 단위 (논리적이란 의미는 DML 언어를 사용하는 것을 의미한다.)
+
+session 에서
+
+1. insert    --트랜잭션 시작
+2. update
+3. delete
+4. commit -- 1+2+3 트랜잭션이 끝나는 시점 ->DB에 영구반영
+
+1. insert    --트랜잭션 시작
+2. update
+3. delete
+4. rollback -- 1+2+3 모두 rollback, 트랜잭션 끝
+
+# savepoint : rollback을 도와주는 기능, 이름을 같게 [예) (a-a)] 이런식으로 하면 위에꺼는 무시하고 밑에꺼가 savepoint 지정된다. ★오라클에만 있다.  
+
+1. insert    --트랜잭션 시작
+    savepoint a;
+2. update
+    savepoint b;
+3. delete
+4. rollback -- 여기서 그냥 rollback 하면 같다. 그러나 rollback to b 하게 되면 b 밑으로 만 rollbock 이 되고 a하면 a밑으로 rollback을 하게 된다.
+
+#  AUTOCOMMIT(자동commit)이 발생되는 경우 : 1. DDL,DCL(grant,revoke) 을 수행 할시 -> 그래서 DDL과 DML ,DCL은 같은 공간에서 코딩을 하지 않는다. 
+                                                                             2. 정상적인 종료를 할 시 (exit) 발생한다.
+                                           		       3. 다른 세션으로 connect를 수행할 시 발생한다.
+delete from emp where id=5;
+
+create table emp_new -- 행이 4개로 변함 autocommit 
+(id number,name varchar2(20),day date)
+tablespace users;
+
+★ rollback 하더라도 그값은 변하지 않는다. 그리고 DML 작업시 반드시 위의 상황을 확인하고 작업을 해야한다.
+
+# 자동 rollback이 발생하는 경우 :   비정상적인 종료 (예> 창닫기,네트워크장애,전원공급 중단, 컴퓨터종료) 가 발생할시 나타난다. 
+			            
+# 내것이 아닌 다른 접속에서 값을 불러오는 방법
+- 소유자로 부터 권한을 받지 않으면 테이블을 불러올 수 없다. 존재할 수 없다는 말은 테이블이 존재 하는 것이 아닌 권한을 받지 않은것이다.
+
+select * from user_tab_privs; -- 테이블로 부터 다른 접속자 권한을 확인하는 방법  ( 1. 내가 받은 object 권한, 2. 내가 줄수 있는 object 권한)
+
+- 권한을 받으려면 테이블을 불러오려는 접속자에게 가서 권한을 주면 된다.
+
+hr 에서
+
+grant select on hr.employees to ora10; 
+
+grant select on 권한해줄 값 to 권한을 줄 접속자;
+ 
+# 주의할 점 : 소유자 이름을 반드시 앞에다 넣어서 검색해야 권한받은 값을 가능하다. 조인 할시는 별칭을 사용한다.
+                      grant 테이블은 하나씩 밖에 옮기지 못한다.
+
+# 값이 나온 값을 복사하고 싶을 때 <소스데이터를 타겟데이터로 옮기려 할 때 (열이 갯수가 같고 타입도 같아야 가능하다.)>
+이때도 트랜잭션 발생이므로 rollback 이나 commit을 하게 되면 트랜잭션으로 인해 값이 돌아가거나 입력된다.
+
+select employee_id,last_name,hire_date -- 복사하고 싶은 값 
+from hr.employees
+where department_id=20;
+
+insert into emp(id,name,day)
+select employee_id,last_name,hire_date 
+from hr.employees
+where department_id=20;
+
+# 똑같은 테이블 구조를 만들고 싶을 때 (뼈대만 가져오고 싶다면 where 절에 FALSE 값을 가져온다.)
+create table emp_copy
+as select * from hr.employees where 1=2;
+
+# 테이블 row값 복제 (열값과 타입이 맞아야 가능하다.)
+insert into emp_copy
+select * from hr.employees;
+
+# 값도 전체 복사
+create table emp_ad
+as select * from hr.departments;
+
+ora10계정에서 진행
+# ctas(시타스) - create table as 테이블 만들라는 서브쿼리 의미.
+create table emp
+as
+select employee_id, last_name, salary, department_id
+from hr.employees
+where 1=2;
+des emp
+create table dept
+as 
+select * from hr.departments
+where 1=2;
+
+# 컬럼을 추가: alter table 테이블이름 add 컬럼이름 컬럼타입;
+
+desc emp 
+alter table emp add job_id varchar2(10); -- 추가되는 위치는 컬럼 맨 뒤에만 추가가 가능하다. 그래서 컬럼 위치를 바꾸고 싶다면 새롭게 생성을 한다.	
+                                                             즉, 컬럼의 위치는 변경하는 것이 불가능하다.!
+
+# 컬럼 수정: 컬럼의 사이즈 (column modify), 주의: 데이터가 없다면 데이터타입을 바꿀 수 있으나 이미 값이 있다면 변경하는 것은 불가능 하다.
+                                                                                char 에서 varchar은 상관이 없다. 데이터가 있어도 사이즈는 그냥 가능하다.
+            					          단 데이터가 남아 있는데 사이즈를 줄이려면 데이터에 종속되므로 데이터크기에 맞게 해야한다.
+
+문법: alter table 테이블이름 modify 컬럼이름 컬림타입;
+
+alter table emp modify job_id varchar2(20);
+
+# 컬럼 삭제 : alter table 테이블이름  drop column 컬럼이름;
+   주의 : 중요한 데이터가 있는 열인데 컬럼을 삭제를 할 수 있기 때문에 조심해야 한다. DDL 언어이기 때문에 자동 COMMIT 되서 rollback도 불가하다.
+
+alter table emp drop column job_id;
+
+# 컬럼을 사용하지 않는 방법: 다시 검색하면 보이지 않는다. alter table 테이블이름 set unused(컬럼이름);
+
+alter table emp set unused(salary);
+
+select * from user_unused_col_tabs; -- 컬럼 테이블에서 unused 한 값, unused를 하면 컬럼의 정보는 보이지 않기 때문에 unused를 한 값을 생각해야한다.
+ 
+usused 에서 used로 해서 컬럼을 추가하는 것도 불가하다. 왜냐하면 alter 가 DDL 이라서 자동 Commit 되므로.
+
+alter table emp drop unused colunms; -- 테이블을 사용하지 못하도록 잠금장치를 하는 방법
+
+# 빨리 삭제하는 방법 1. unused 를 한다. (테이블을 계속 해야한다면 이방법)  2. 그리고 drop unused column을 해서 후에 삭제를 한다 (고객들이 없는 시간에 삭제)
+
+# 데이터 품질이 나빠지는 경우 : 1족이여야 하는데 m족이 되는 값이 되버리는 경우,   즉, 중복되는 값이 존재하는 경우 
+
+예)
+			           
+insert into emp(employee_id,last_name,department_id)
+values(1,'hong',10);
+insert into emp(employee_id,last_name,department_id)
+values(1,'kim',10);
+
+# ★ 제약조건 : 데이터 품질을 좋아지게 하는 방법, 제약조건을 걸 때 제약조건 컬럼에 데이터가 없어야 제약을 걸수 있다.
+
+primary key (대표키) - 유일한값, null 체크, 중복성 불가 ( null 을 방지하는 key 값)
+
+alter table 테이블명 add constraint 프라이머리키이름 (제약조건이름)  primary key(컬럼이름);
+
+프라이머리키이름도 고유한 이름으로 해야 가능하다.
+
+alter table emp 
+add constraint emp_id_pk primary key(employee_id);
+
+select * 
+from user_constraints      -- 어떤 제약이 걸려있는지를 찾는 방법
+where table_name='EMP'; -- table을 적을땐 반드시 대문자로 쓴다.
+
+insert into emp(employee_id,last_name,department_id)
+values(1,'hong',10);
+insert into emp(employee_id,last_name,department_id)
+values(1,'kim',10); -- 여기서 오류가 된다. 왜냐면 primary key로 인해서 중복되는 값은 불가능하다.
+insert into emp(employee_id,last_name,department_id)
+values(null,'kim',10); -- null 값을 넣으려 하는것도 불가능하다.
+
+alter table dept
+add constraint dept_id_pk primary key (department_id); -- dept table 의 대표키를 잡는 것
+select * 
+from user_constraints
+where table_name='DEPT'; -- 제약조건 확인
+
+# foreign key(외래키) - primary key에 값을 참조하는 제약조건 (primary에 없는 값을 제한하고자 만든 키)
+                                -- 중복을 허용한다. 단지 foreign key가 있는지 없는지만 확인한다. Null값도 허용한다.
+alter table 테이블이름 
+add constraint 제약조건키 이름 
+foreign key(테이블의 기본키)
+references 참조되는테이블이름(참조되는 테이블의 기본키);
+
+drop table dept purge; -- 테이블 삭제후 생성 ( 모든 값 복사 ) 
+create table dept
+as select * from hr.departments;
+
+select *  -- 제약조건 확인
+from user_constraints
+where table_name='DEPT';
+
+alter table dept -- 기본키 설정
+add constraint dept_id_pk primary key (department_id);
+
+alter table emp -- 외래키 설정
+add constraint emp_dept_id_fk 
+foreign key(department_id)
+references dept(department_id);
+
+# 제약조건을 확인하는 방법 -- 이름 및 키 확인 가능
+
+select *
+from user_constraints
+where table_name='EMP';
+
+# primary key 와 foregn key 종속시키려고 하고 삭제를 하지 못하게 하려고 두 키를 만든다.
+
+# 제약 조건 삭제
+
+alter table 테이블명 drop primary key;
+
+alter table emp drop primary key;
+
+# 되지 않는 이유: foreign key가 참조 되어 있어서 불가능하다. 그래서 foreign key를 먼저 삭제 한후 primary key를 없애야 한다.
+alter table dept drop primary key;
+-- ★그래서 cascade를 추가한다.
+alter table dept drop primary key cascade;
+
+# 다른방법
+alter table dept drop constraint 제약조건키 이름 cascade;
+alter table dept drop constraint dept_id_pk cascade;
+
+
+# 처음부터 테이블을 생성 해서 거기서 제약조건을 지정한다.
+
+
+create table emp
+(id number constraint emp_id_pk primary key, -- 열레벨 정의 : 컬럼값을 적으면서 바로 제약조건을 거는 방법
+ name varchar2(20),
+ sal number,
+ dept_id number,
+ constraint emp_sal_ck check(sal > 500)); -- 테이블레벨 정의 : 컬럼값 모두 다 놓고 constraint 해야한다. 단 어떤 컬럼을 키로 잡을지를 소괄호를 통해 지정해줘야 한다.
+
+create table 테이블 이름
+(컬럼이름 컬럼테이블 constraint 제약조건키 이름 제약조건키);
+
+또는
+
+create 테이블 이름
+(열값
+constraint 제약조건키 이름 제약조건키(컬럼이름 or 컬럼 조건));
+
+# check 조건 :  조건식에 해당하는 값만 들어가게 하는 제약조건
+
+insert into emp(id,name,sal,dept_id) -- check 조건 위반
+values(1,'홍길동',500,10);
+
+insert into emp(id,name,sal,dept_id) -- 값 가능
+values(1,'홍길동',5000,10);
+
+insert into emp(id,name,sal,dept_id) -- primary key 중복 위반
+values(1,'박찬호',1000,10);
+
+insert into emp(id,name,sal,dept_id) --  primary key Null 값 불가
+values(null,'박찬호',1000,10);
+
+--★★명령문레벨롤백: insert 오류가 나더라도 그 전 옳은 값에 대해선 영향을 주지 않는 것을 의미한다.
+
+insert into emp(id,name,sal,dept_id) -- check 에선 null은 상관이 없다. 오직 check에서 원하는 조건만 확인을 한다.
+values(1,'홍길동',null,10);
+
+★ DML 문장을 수행하는 순간 무조건 제약조건은 실행이 된다.
+
+create table dept
+(dept_id number constraint dept_id_pk primary key,
+dept_name varchar2(20) 
+constraint dept_name_uk unique);
+
+# unique 제약조건 : 유일한 값만 체크하는 제약조건 , null은 문제가 되지 않는다.
+insert into dept(dept_id,dept_name)
+values(10,'총무부');
+
+insert into dept(dept_id,dept_name) -- unique 값이 유일하지 않기 때문에 오류가 뜬다.
+values(20,'총무부');
+
+insert into dept(dept_id,dept_name) --null은 허용하므로 실행이 된다.
+values(20,null);
+
+
+insert into dept(dept_id,dept_name)
+values(10,'총무부');
+insert into dept(dept_id,dept_name)
+values(20,'데이터분석팀');
+commit;
+select *
+from dept;
+
+insert into emp(id,name,sal,dept_id) -- dept_id에 없는 값을 넣으면 outer join 을 해야한다.
+values(1,'홍길동',1000,30);
+
+그러므로 foreign key를 걸어야 한다.
+
+alter table emp -- 외래키 설정
+add constraint emp_dept_id_fk 
+foreign key(dept_id)
+references dept(dept_id);
+
+insert into emp(id,name,sal,dept_id) -- foreign key에 null 값은 가능하다..
+values(1,'홍길동',1000,null);
+
+# NOT NULL - NULL 이면 안되는 값을 제약조건 하는것 , 추가할 땐 modify를 통해 추가를 해야한다.
+
+alter table emp modify name 
+constraint emp_name_nn not null; 
+
+insert into emp(id,name,sal,dept_id) -- not null 조건에 의해 실행되지 않는다.
+values(1,null,1000,null);
+
+# not null 조건 삭제방법
+
+alter table emp modify name null; -- null 을 허용한다.
+
+alter table emp drop
+constraint emp_name_nn;
+
+# not null을 바로 create 에서조건을 만들 때  테이블레벨정의 로는 불가능하다. 즉 , 열레벨 정의로만 가능하다.
+
+create table emp
+(id number constraint emp_id_pk primary key, -- 열레벨 정의 : 컬럼값을 적으면서 바로 제약조건을 거는 방법
+ name varchar2(20) constraint emp_name_nn not null, -- 가능
+ sal number,
+ dept_id number,
+ constraint emp_sal_ck check(sal > 500)
+ constraint emp_name_nn not null); -- 불가능 
+
+그래서 not null 제약조건은 modify로만 가능하다.
+
+# 외래키 까지 완성본
+create table emp
+(id number constraint emp_id_pk primary key, 
+ name varchar2(20) constraint emp_name_nn not null, 
+ sal number,
+ dept_id number,
+ constraint emp_sal_ck check(sal > 500),
+ constraint emp_dept_id_fk 
+ foreign key(dept_id)
+ references dept(dept_id));
+
+# foreign key 열조건을 걸라면 컬럼을 또 쓸 필요 없이 reference 로만 해야한다.
+
+create table emp
+(id number constraint emp_id_pk primary key, 
+ name varchar2(20) constraint emp_name_nn not null, 
+ sal number,
+ dept_id number constraint emp_dept_id_fk references dept(dept_id),
+ constraint emp_sal_ck check(sal > 500),
+ );
+
+# 오류 값
+
+create table emp
+(id number constraint emp_id_pk primary key, 
+ name varchar2(20) constraint emp_name_nn not null, 
+ sal number,
+ dept_id number constraint emp_dept_id_fk foreign key(dep_id) references dept(dept_id),
+ constraint emp_sal_ck check(sal > 500),
+ );

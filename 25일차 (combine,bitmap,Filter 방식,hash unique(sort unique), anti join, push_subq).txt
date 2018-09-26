@@ -1,0 +1,684 @@
+select * from user_ind_columns where table_name='EMPLOYEES';
+
+INDEX_NAME   TABLE_NAME COLUMN_NAME COLUMN_POSITION COLUMN_LENGTH CHAR_LENGTH DESCEND
+-------------------------------------------------------------------------------------------------------------------------
+EMP_EMAIL_UK	EMPLOYEES	EMAIL	1	25	25	ASC
+EMP_EMP_ID_PK	EMPLOYEES	EMPLOYEE_ID	1	22	0	ASC
+EMP_DEPARTMENT_IX	EMPLOYEES	DEPARTMENT_ID	1	22	0	ASC
+EMP_JOB_IX	EMPLOYEES	JOB_ID	1	10	10	ASC
+EMP_MANAGER_IX	EMPLOYEES	MANAGER_ID	1	22	0	ASC
+EMP_NAME_IX	EMPLOYEES	LAST_NAME	1	25	25	ASC
+EMP_NAME_IX	EMPLOYEES	FIRST_NAME	2	20	20	ASC
+
+select * from user_indexes where table_name = 'EMPLOYEES';
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+EMP_EMAIL_UK	NORMAL	HR	EMPLOYEES	TABLE	UNIQUE	DISABLED		USERS
+EMP_EMP_ID_PK	NORMAL	HR	EMPLOYEES	TABLE	UNIQUE	DISABLED		USERS
+EMP_DEPARTMENT_IX	NORMAL	HR	EMPLOYEES	TABLE	NONUNIQUE	DISABLED		USERS
+EMP_JOB_IX	NORMAL	HR	EMPLOYEES	TABLE	NONUNIQUE	DISABLED		USERS
+EMP_MANAGER_IX	NORMAL	HR	EMPLOYEES	TABLE	NONUNIQUE	DISABLED		USERS
+EMP_NAME_IX	NORMAL	HR	EMPLOYEES	TABLE	NONUNIQUE	DISABLED		USERS
+
+employee_id -> emp_emp_id_pk
+job_id -> emp_job_ix
+
+
+select e.employee_id, e.job_id
+from employees e
+where e.employee_id <=120
+and e.job_id ='PU_CLERK';
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 1019430118
+
+----------------------------------------------------------------------------------------------------
+| Id  | Operation                   | Name       | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+----------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |            |      1 |        |      5 |00:00:00.01 |       4 |
+|*  1 |  TABLE ACCESS BY INDEX ROWID| EMPLOYEES  |      1 |      1 |      5 |00:00:00.01 |       4 |
+|*  2 |   INDEX RANGE SCAN          | EMP_JOB_IX |      1 |      5 |      5 |00:00:00.01 |       2 |
+----------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter("E"."EMPLOYEE_ID"<=120)
+   2 - access("E"."JOB_ID"='PU_CLERK')
+
+
+21 rows selected.
+
+create index emp_sal_idx
+on employees(salary);
+
+# combine - 비트라인 인덱스를 비트맵으로 컨버젼해주는 값
+
+select /*+ index_combine(e emp_emp_id_pk emp_sal_idx)*/
+	employee_id,salary
+from employees e
+where e.employee_id = 100
+and e.salary = 24000;
+
+select *
+from employees
+where department_id in (select /*+ no_unnest */ department_id -- no_unnest : filter로 풀리게 함.
+			from departments
+			where location_id = 1500); 
+
+
+Plan hash value: 4233807898
+
+---------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |
+---------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |             |      1 |        |     45 |00:00:00.01 |      31 |      2 |
+|*  1 |  FILTER                      |             |      1 |        |     45 |00:00:00.01 |      31 |      2 | -- 상호관계 서브쿼리처럼 실행된다.
+|   2 |   TABLE ACCESS FULL          | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       9 |      0 |
+|*  3 |   TABLE ACCESS BY INDEX ROWID| DEPARTMENTS |     12 |      1 |      1 |00:00:00.01 |      22 |      2 | - cache 기능을 통해 i/o가 줄어든다. (중복제거)
+|*  4 |    INDEX UNIQUE SCAN         | DEPT_ID_PK  |     12 |      1 |     11 |00:00:00.01 |      11 |      1 |
+---------------------------------------------------------------------------------------------------------------
+
+Filter 방식 :  메인 쿼리에서 읽히는 row마다 서브쿼리를 반복수행하면서 조건에 맞는 데이터를 찾는방식.
+              사원 테이블에서 department_id 값을 찾는 것을 변수로 두어서 서브쿼리 절에서 departments 테이블에서 조건인 location_id=1500을 사용하여 department_id를 찾고
+	   앞에 변수에 값을 넣는다.   
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter( IS NOT NULL)
+   3 - filter("LOCATION_ID"=1500) - 서브쿼리 조건 실행
+   4 - access("DEPARTMENT_ID"=:B1) 먼저 실행 후
+
+
+24 rows selected.
+
+# unnest 방식 : 동일한 결과를 보장한다면 조인문으로 변환한다.
+
+- 조인으로 변환하면 다양한 엑세스 결로, 조인의 방법, 조인의 순서를 결정할 수 있다.
+
+select *
+from employees
+where department_id in (select department_id 
+			from departments
+			where location_id = 1500);  --메인쿼리 관련 절만 뽑을 수 있다 (서브쿼리)
+
+select /*+ leading(d,e) use_nl(e) +/ e.*
+from employees e, departments d
+where e.department_id = d.department_id 
+and d.location_id = 1500; -- join은 동일한 값이 가능하므로 departments 값도 가능하고 employees 값도 가능하다.
+
+서브쿼리에서 조인으로 바꾸면 종속관계에서 대등 관계가 되서 driving을 다른값으로 바꿔서 해서 더 좋은 방법으로 값을 찾을 수 있다.
+
+Plan hash value: 432925905
+
+----------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                     | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |
+----------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT              |                   |      1 |        |     45 |00:00:00.01 |   12 |         2 |
+|   1 |  NESTED LOOPS                 |                   |      1 |        |     45 |00:00:00.01 |   12 |         2 |
+|   2 |   NESTED LOOPS                |                   |      1 |     10 |     45 |00:00:00.01 |    7 |         2 |
+|   3 |    TABLE ACCESS BY INDEX ROWID| DEPARTMENTS       |      1 |      1 |      1 |00:00:00.01 |    3 |         1 |
+|*  4 |     INDEX RANGE SCAN          | DEPT_LOCATION_IX  |      1 |      1 |      1 |00:00:00.01 |    2 |         1 |
+|*  5 |    INDEX RANGE SCAN           | EMP_DEPARTMENT_IX |      1 |     10 |     45 |00:00:00.01 |    4 |         1 |
+|   6 |   TABLE ACCESS BY INDEX ROWID | EMPLOYEES         |     45 |     10 |     45 |00:00:00.01 |    5 |         0 |
+----------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("LOCATION_ID"=1500)
+   5 - access("DEPARTMENT_ID"="DEPARTMENT_ID")
+
+select *
+from employees e
+where exists  (select /*+ no_unnest */ 'x' 
+			from departments
+			where location_id = 1500
+			and department_id=e.department_id); 
+
+Plan hash value: 4233807898
+
+------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |             |      1 |        |     45 |00:00:00.01 |      31 |
+|*  1 |  FILTER                      |             |      1 |        |     45 |00:00:00.01 |      31 |
+|   2 |   TABLE ACCESS FULL          | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       9 |
+|*  3 |   TABLE ACCESS BY INDEX ROWID| DEPARTMENTS |     12 |      1 |      1 |00:00:00.01 |      22 |
+|*  4 |    INDEX UNIQUE SCAN         | DEPT_ID_PK  |     12 |      1 |     11 |00:00:00.01 |      11 |
+------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter( IS NOT NULL)
+   3 - filter("LOCATION_ID"=1500)
+   4 - access("DEPARTMENT_ID"=:B1)
+
+
+★★★ 서브쿼리를 조인으로 변환 할 때 유의점
+
+메인쿼리의 employees 테이블과 서브쿼리 departments 테이블이 m:1이 관계이기 때문에 조인문으로 바꾸더라도 쿼리 결과가 보장된다.
+이게 뒤바뀌어 있다면 주의를 해야한다. 즉, (1:m)
+
+select *
+from departments
+where department_id in ( select /*+ no_unnest */ department_id
+			from employees);
+
+select *
+from departments d
+where exists (select /*+ no_unnest */ 'x' 
+		from employees
+		where d.department_id=department_id); -- 부서에 소속되어 있는 값
+
+조인으로 바꾸면 이렇게 되기 때문에 값이 다르다 따라서 distinct 을 사용해줘야 한다.
+
+select d.*
+from employees e, departments d
+where e.department_id = d.department_id;
+
+select d.*
+from (select distinct department_id from employees) e, departments d
+where e.department_id = d.department_id;
+
+Plan hash value: 4246956361
+
+-------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation            | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem | -- 이런 실행결과가 나오면 무조건 튜닝 대상이다.
+-------------------------------------------------------------------------------------------------------------------------------                             (hash unique, sort unique)
+|   0 | SELECT STATEMENT     |                   |      1 |        |     11 |00:00:00.01 |       9 |    |          |          |
+|   1 |  VIEW                | VM_NWVW_1         |      1 |    106 |     11 |00:00:00.01 |       9 |    |          |          |
+|   2 |   HASH UNIQUE        |                   |      1 |    106 |     11 |00:00:00.01 |       9 |   858K|   858K| 1085K (0)|
+|   3 |    NESTED LOOPS      |                   |      1 |    106 |    106 |00:00:00.01 |       9 |    |          |          |
+|   4 |     TABLE ACCESS FULL| DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |       6 |    |          |          |
+|*  5 |     INDEX RANGE SCAN | EMP_DEPARTMENT_IX |     27 |      4 |    106 |00:00:00.01 |       3 |    |          |          |
+-------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   5 - access("DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+# Hash unique / Sort unique
+
+1족 집합을 확신할 수 없는 서브쿼리를 driving table이 된다면 먼저 sort(hash) unique 수행함으로써 
+1족 집합을 만든 다음에 조인을 수행
+
+# 세미조인 (HASH SORT/UNIQUE 해결) 
+- 서브쿼리를 join으로 바꾼다
+- 조인으로 바뀐 서브쿼리는 항상 후행처리가 된다.
+- 메인쿼리 (선행테이블) row가 서브쿼리 (후행테이블)의 row와 match가 되면 조인조건의 만족되니
+  해당 row에 대해서 더이상 검색을 진행하지 않는다.
+  그 다음 메인쿼리의 row를 가지고 다시 수행한다.
+
+select *
+from departments 
+where department_id in ( select department_id from employees);
+
+Plan hash value: 2605691773
+
+--------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |                   |      1 |        |     11 |00:00:00.01 |      10 |
+|   1 |  NESTED LOOPS SEMI |                   |      1 |     10 |     11 |00:00:00.01 |      10 |
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |       7 |
+|*  3 |   INDEX RANGE SCAN | EMP_DEPARTMENT_IX |     27 |     41 |     11 |00:00:00.01 |       3 |
+--------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("DEPARTMENT_ID"="DEPARTMENT_ID")
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+select /*+ leading(d) use_nl(d) */ *
+from departments d
+where department_id in ( select /*+ unnest */ department_id -- 여기서 filter로 발생했다고 생각하면 된다 (이 절이 메인이 된다.)
+			from employees e);
+
+Plan hash value: 2605691773
+
+--------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |                   |      1 |        |     11 |00:00:00.01 |      10 |
+|   1 |  NESTED LOOPS SEMI |                   |      1 |     10 |     11 |00:00:00.01 |      10 |
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |       7 |
+|*  3 |   INDEX RANGE SCAN | EMP_DEPARTMENT_IX |     27 |     41 |     11 |00:00:00.01 |       3 |
+--------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("DEPARTMENT_ID"="DEPARTMENT_ID")
+
+select *
+from departments
+where department_id in (select /*+ nl_sj */ department_id from employees);
+
+
+
+Plan hash value: 2605691773
+
+--------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name                          | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |                               |      1 |        |     11 |00:00:00.01 |      10 |
+|   1 |  NESTED LOOPS SEMI |                              |      1 |     10 |     11 |00:00:00.01 |      10 |
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS            |      1 |     27 |     27 |00:00:00.01 |       7 |
+|*  3 |   INDEX RANGE SCAN | EMP_DEPARTMENT_IX |     27 |     41 |     11 |00:00:00.01 |       3 |
+--------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("DEPARTMENT_ID"="DEPARTMENT_ID")
+
+
+select *
+from departments
+where department_id in (select /*+ hash_sj */ department_id from employees);
+
+
+Plan hash value: 1087652491
+
+-----------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name                         | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-----------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |                             |      1 |        |     11 |00:00:00.01 |       8 |    |  |          |
+|*  1 |  HASH JOIN SEMI    |                             |      1 |     10 |     11 |00:00:00.01 |       8 |   990K|   990K| 1247K (0)|
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS          |      1 |     27 |     27 |00:00:00.01 |       6 |    |  |          |
+|   3 |   INDEX FULL SCAN  | EMP_DEPARTMENT_IX |      1 |    107 |    106 |00:00:00.01 |       2 |    |  |          |
+-----------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("DEPARTMENT_ID"="DEPARTMENT_ID")
+
+
+select *
+from departments
+where department_id in (select /*+ merge_sj */ department_id from employees);
+
+Plan hash value: 954076352
+
+---------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                              | Name              |     Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+---------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                  |                             |      1 |        |     11 |00:00:00.01 |    5 |          |       |          |
+|   1 |  MERGE JOIN SEMI                   |                            |      1 |     10 |     11 |00:00:00.01 |    5 |          |       |          |
+|   2 |   TABLE ACCESS BY INDEX ROWID| DEPARTMENTS          |      1 |     27 |     12 |00:00:00.01 |    4 |          |       |          |
+|   3 |    INDEX FULL SCAN                 | DEPT_ID_PK              |      1 |     27 |     12 |00:00:00.01 |    2 |          |       |          |
+|*  4 |   SORT UNIQUE                      |                             |     12 |    107 |     11 |00:00:00.01 |    1 |  2048 |  2048 | 2048  (0)|
+|   5 |    INDEX FULL SCAN                 | EMP_DEPARTMENT_IX |      1 |    107 |    106 |00:00:00.01 |    1 |          |       |          |
+---------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("DEPARTMENT_ID"="DEPARTMENT_ID")
+       filter("DEPARTMENT_ID"="DEPARTMENT_ID")
+
+
+select *
+from departments
+where department_id not in (select /*+ no_unnest */ department_id from employees where department_id is not null);
+
+--------------------------------------------------------------------------------------------
+| Id  | Operation              | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |             |      1 |           |      0         |00:00:00.01 |     114 |
+|*  1 |  FILTER                  |             |      1 |               |      0        |00:00:00.01 |     114 |
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |       6 |
+|*  3 |   TABLE ACCESS FULL| EMPLOYEES   |     27 |      2 |     27 |00:00:00.01 |     108 |
+--------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter( IS NULL)
+   3 - filter(LNNVL("DEPARTMENT_ID"<>:B1))
+
+
+
+select *
+from departments d
+where not exists (select /*+ no_unnest */ 'x' from employees where department_id=d.department_id);
+
+
+Plan hash value: 440241596
+
+--------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |                   |      1 |        |     16 |00:00:00.01 |      34 |
+|*  1 |  FILTER            |                   |      1 |        |     16 |00:00:00.01 |      34 |
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |       7 |
+|*  3 |   INDEX RANGE SCAN | EMP_DEPARTMENT_IX |     27 |      2 |     11 |00:00:00.01 |      27 |
+--------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter( IS NULL)
+   3 - access("DEPARTMENT_ID"=:B1)
+
+select *
+from departments
+where department_id not in (select department_id from employees where department_id is not null);
+
+Plan hash value: 3082375452
+
+--------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |                   |      1 |        |     16 |00:00:00.01 |      11 |
+|   1 |  NESTED LOOPS ANTI |                   |      1 |     17 |     16 |00:00:00.01 |      11 |
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |       7 |
+|*  3 |   INDEX RANGE SCAN | EMP_DEPARTMENT_IX |     27 |     41 |     11 |00:00:00.01 |       4 |
+--------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("DEPARTMENT_ID"="DEPARTMENT_ID")
+       filter("DEPARTMENT_ID" IS NOT NULL)
+
+#ANTI JOIN
+- join의 값이 존재하지 않는 row를 찾는다. 
+- not in 연산자나 not exists 을 할 때 나타난다.
+- main 이 1족이고 sub가 m족이면 나타난다.
+
+select *
+from departments d
+where not exists (select 'x' from employees where department_id=d.department_id);
+
+Plan hash value: 3082375452
+
+--------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |                   |      1 |        |     16 |00:00:00.01 |      11 |
+|   1 |  NESTED LOOPS ANTI |                   |      1 |     17 |     16 |00:00:00.01 |      11 |
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |       7 |
+|*  3 |   INDEX RANGE SCAN | EMP_DEPARTMENT_IX |     27 |     41 |     11 |00:00:00.01 |       4 |
+--------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+
+select *
+from departments d
+where not exists (select /*+ nl_aj */ 'x' from employees where department_id=d.department_id);
+
+
+Plan hash value: 3082375452
+
+--------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |                   |      1 |        |     16 |00:00:00.01 |      11 |
+|   1 |  NESTED LOOPS ANTI |                   |      1 |     17 |     16 |00:00:00.01 |      11 |
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |       7 |
+|*  3 |   INDEX RANGE SCAN | EMP_DEPARTMENT_IX |     27 |     41 |     11 |00:00:00.01 |       4 |
+--------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+select *
+from departments d
+where not exists (select /*+ hash_aj */ 'x' from employees where department_id=d.department_id);
+
+
+
+Plan hash value: 3587451639
+
+-----------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-----------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |                   |      1 |        |     16 |00:00:00.01 |       7 |    |  |          |
+|*  1 |  HASH JOIN ANTI    |                   |      1 |     17 |     16 |00:00:00.01 |       7 |   990K|   990K| 1246K (0)|
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |       6 |    |  |          |
+|   3 |   INDEX FULL SCAN  | EMP_DEPARTMENT_IX |      1 |    107 |    106 |00:00:00.01 |       1 |    |  |          |
+-----------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+select *
+from departments d
+where not exists (select /*+ merge_aj */  'x' from employees where department_id=d.department_id);
+
+Plan hash value: 1314441467
+
+---------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+---------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                   |      1 |        |     16 |00:00:00.01 |    5 |          |       |          |
+|   1 |  MERGE JOIN ANTI             |                   |      1 |     17 |     16 |00:00:00.01 |    5 |          |       |          |
+|   2 |   TABLE ACCESS BY INDEX ROWID| DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |    4 |          |       |          |
+|   3 |    INDEX FULL SCAN           | DEPT_ID_PK        |      1 |     27 |     27 |00:00:00.01 |    2 |          |       |          |
+|*  4 |   SORT UNIQUE                |                   |     27 |    107 |     11 |00:00:00.01 |    1 |  2048 |  2048 | 2048  (0)|
+|   5 |    INDEX FULL SCAN           | EMP_DEPARTMENT_IX |      1 |    107 |    106 |00:00:00.01 |    1 |          |       |          |
+---------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+       filter("DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+(예측마케팅)
+
+select e.*, d.*
+from employees e, departments d
+where e.department_id = d.department_id
+and exists (select 'x' from locations where location_id=d.location_id and city='London');
+
+Plan hash value: 2119770789
+
+---------------------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                       | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |  OMem |  1Mem | Used-Mem |
+---------------------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                |                   |      1 |        |      1 |00:00:00.04 |       8 |      2 |       |       |          |
+|   1 |  NESTED LOOPS                   |                   |      1 |        |      1 |00:00:00.04 |       8 |      2 |       |       |          |
+|   2 |   NESTED LOOPS                  |                   |      1 |     15 |      1 |00:00:00.04 |       7 |      2 |       |       |          |
+|   3 |    NESTED LOOPS                 |                   |      1 |      4 |      1 |00:00:00.04 |       5 |      2 |       |       |          |
+|   4 |     SORT UNIQUE                 |                   |      1 |      1 |      1 |00:00:00.04 |       2 |      2 |  2048 |  2048 | 2048  (0)|
+|   5 |      TABLE ACCESS BY INDEX ROWID| LOCATIONS         |      1 |      1 |      1 |00:00:00.04 |       2 |      2 |       |       |          |
+|*  6 |       INDEX RANGE SCAN          | LOC_CITY_IX       |      1 |      1 |      1 |00:00:00.03 |       1 |      1 |       |       |          |
+|   7 |     TABLE ACCESS BY INDEX ROWID | DEPARTMENTS       |      1 |      4 |      1 |00:00:00.01 |       3 |      0 |       |       |          |
+|*  8 |      INDEX RANGE SCAN           | DEPT_LOCATION_IX  |      1 |      4 |      1 |00:00:00.01 |       2 |      0 |       |       |          |
+|*  9 |    INDEX RANGE SCAN             | EMP_DEPARTMENT_IX |      1 |     10 |      1 |00:00:00.01 |       2 |      0 |       |       |          |
+|  10 |   TABLE ACCESS BY INDEX ROWID   | EMPLOYEES         |      1 |      4 |      1 |00:00:00.01 |       1 |      0 |       |       |          |
+---------------------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   6 - access("CITY"='London')
+   8 - access("LOCATION_ID"="D"."LOCATION_ID")
+   9 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+select e.*, d.*
+from employees e, departments d
+where e.department_id = d.department_id
+and exists (select /*+ no_unnest no_push_subq */ 'x' 
+		from locations where location_id=d.location_id and city='London');
+
+Plan hash value: 745645447
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                     | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |  OMem |  1Mem | Used-Mem |
+-------------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT              |             |      1 |        |      1 |00:00:00.01 |      24 |      1 |       |       |          |
+|*  1 |  FILTER                       |             |      1 |        |      1 |00:00:00.01 |      24 |      1 |       |       |          | 
+|   2 |   MERGE JOIN                  |             |      1 |    106 |    106 |00:00:00.01 |      10 |      0 |       |       |          | - MAIN
+|   3 |    TABLE ACCESS BY INDEX ROWID| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |       4 |      0 |       |       |          |
+|   4 |     INDEX FULL SCAN           | DEPT_ID_PK  |      1 |     27 |     27 |00:00:00.01 |       2 |      0 |       |       |          |
+|*  5 |    SORT JOIN                  |             |     27 |    107 |    106 |00:00:00.01 |       6 |      0 | 22528 | 22528 |20480  (0)|
+|   6 |     TABLE ACCESS FULL         | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       6 |      0 |       |       |          |
+|*  7 |   TABLE ACCESS BY INDEX ROWID | LOCATIONS   |      7 |      1 |      1 |00:00:00.01 |      14 |      1 |       |       |          | -SUB (7개만 들어온 이유 : cache 전달)
+|*  8 |    INDEX UNIQUE SCAN          | LOC_ID_PK   |      7 |      1 |      7 |00:00:00.01 |       7 |      1 |       |       |          |
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter( IS NOT NULL)
+   5 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+       filter("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+   7 - filter("CITY"='London')
+   8 - access("LOCATION_ID"=:B1)
+
+
+31 rows selected.
+
+-- join으로 한경우
+
+
+select /*+leading(l,d,e) use_nl(d) use_nl(e)*/ e.*, d.*
+from employees e, departments d, locations l
+where e.department_id = d.department_id
+and d.location_id = l.location_id
+and l.city='London';
+
+--------------------------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |                   |      1 |        |      1 |00:00:00.01 |    9 |
+|   1 |  NESTED LOOPS                  |                   |      1 |        |      1 |00:00:00.01 |    9 |
+|   2 |   NESTED LOOPS                 |                   |      1 |     15 |      1 |00:00:00.01 |    8 |
+|   3 |    NESTED LOOPS                |                   |      1 |      4 |      1 |00:00:00.01 |    6 |
+|   4 |     TABLE ACCESS BY INDEX ROWID| LOCATIONS         |      1 |      1 |      1 |00:00:00.01 |    3 |
+|*  5 |      INDEX RANGE SCAN          | LOC_CITY_IX       |      1 |      1 |      1 |00:00:00.01 |    2 |
+|   6 |     TABLE ACCESS BY INDEX ROWID| DEPARTMENTS       |      1 |      4 |      1 |00:00:00.01 |    3 |
+|*  7 |      INDEX RANGE SCAN          | DEPT_LOCATION_IX  |      1 |      4 |      1 |00:00:00.01 |    2 |
+|*  8 |    INDEX RANGE SCAN            | EMP_DEPARTMENT_IX |      1 |     10 |      1 |00:00:00.01 |    2 |
+|   9 |   TABLE ACCESS BY INDEX ROWID  | EMPLOYEES         |      1 |      4 |      1 |00:00:00.01 |    1 |
+--------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   5 - access("L"."CITY"='London')
+   7 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+   8 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+
+30 rows selected.
+
+# 만약 조인이 되지 않는 경우가 되서 filter가 되버린다면? 즉, 버려할 데이터가 너무 많다면 (서브쿼리에 있는 조인절을 먼저 올리고 싶다면) push_subq 실행
+# push_subquery - 실행계획상 가능한 앞단계에서 서브쿼리 필터링을 먼저 처리 함으로써 다음 수행 단계로 넘어가는 row 수를 줄일 수 있는 기능
+		- ★★★unnest 되지 않는 서브쿼리의 처리 순서를 제어하는 기능 
+
+select e.*, d.*
+from employees e, departments d
+where e.department_id = d.department_id
+and exists (select /*+ no_unnest push_subq */ 'x' 
+		from locations where location_id=d.location_id and city='London');
+
+Plan hash value: 3821569963
+
+--------------------------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |                   |      1 |        |      1 |00:00:00.01 |   24 |
+|   1 |  NESTED LOOPS                  |                   |      1 |        |      1 |00:00:00.01 |   24 |
+|   2 |   NESTED LOOPS                 |                   |      1 |     13 |      1 |00:00:00.01 |   23 |
+|*  3 |    TABLE ACCESS FULL           | DEPARTMENTS       |      1 |      1 |      1 |00:00:00.01 |   21 | -- 이거 두개는 조인이 아니다. (3,4) 는 필터링 하는 것이다. (london값만 찾는다).
+|*  4 |     TABLE ACCESS BY INDEX ROWID| LOCATIONS         |      7 |      1 |      1 |00:00:00.01 |   14 |
+|*  5 |      INDEX UNIQUE SCAN         | LOC_ID_PK         |      7 |      1 |      7 |00:00:00.01 |    7 |
+|*  6 |    INDEX RANGE SCAN            | EMP_DEPARTMENT_IX |      1 |     10 |      1 |00:00:00.01 |    2 |
+|   7 |   TABLE ACCESS BY INDEX ROWID  | EMPLOYEES         |      1 |     10 |      1 |00:00:00.01 |    1 |
+--------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - filter( IS NOT NULL)
+   4 - filter("CITY"='London')
+   5 - access("LOCATION_ID"=:B1)
+   6 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+-- 힌트를 쓰지않은 경우 
+
+select e.*, d.*
+from employees e, departments d
+where e.department_id = d.department_id
+and exists (select 'x' 
+		from locations where location_id=d.location_id and city='London');
+
+Plan hash value: 2119770789
+
+------------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                       | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+------------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                |                   |      1 |        |      1 |00:00:00.01 |       8 |       |       |          |
+|   1 |  NESTED LOOPS                   |                   |      1 |        |      1 |00:00:00.01 |       8 |       |       |          |
+|   2 |   NESTED LOOPS                  |                   |      1 |     15 |      1 |00:00:00.01 |       7 |       |       |          |
+|   3 |    NESTED LOOPS                 |                   |      1 |      4 |      1 |00:00:00.01 |       5 |       |       |          |
+|   4 |     SORT UNIQUE                 |                   |      1 |      1 |      1 |00:00:00.01 |       2 |  2048 |  2048 | 2048  (0)| -- london 지역에 위치하는 location_id가 1족이라고 확신 할수 없다. 그러므로 sort  발생
+|   5 |      TABLE ACCESS BY INDEX ROWID| LOCATIONS         |      1 |      1 |      1 |00:00:00.01 |       2 |       |       |          |
+|*  6 |       INDEX RANGE SCAN          | LOC_CITY_IX       |      1 |      1 |      1 |00:00:00.01 |       1 |       |       |          |
+|   7 |     TABLE ACCESS BY INDEX ROWID | DEPARTMENTS       |      1 |      4 |      1 |00:00:00.01 |       3 |       |       |          |
+|*  8 |      INDEX RANGE SCAN           | DEPT_LOCATION_IX  |      1 |      4 |      1 |00:00:00.01 |       2 |       |       |          |
+|*  9 |    INDEX RANGE SCAN             | EMP_DEPARTMENT_IX |      1 |     10 |      1 |00:00:00.01 |       2 |       |       |          |
+|  10 |   TABLE ACCESS BY INDEX ROWID   | EMPLOYEES         |      1 |      4 |      1 |00:00:00.01 |       1 |       |       |          |
+------------------------------------------------------------------------------------------------------------------------------------------
+
+# 여기서 city는 1족집합이라고 확신할 수 없다. 왜냐하면 런던에 해당하는 location_id가 여러개 일 수도 있기 때문에 sort가 나온다.
+   semi 조인과는 다르다. 
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   6 - access("CITY"='London')
+   8 - access("LOCATION_ID"="D"."LOCATION_ID")
+   9 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+-- 순수 조인
+
+select e.*, d.*
+from employees e, departments d, locations l
+where e.department_id = d.department_id
+and d.location_id = l.location_id
+and l.city='London';
+
+Plan hash value: 2525006977
+
+--------------------------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |                   |      1 |        |      1 |00:00:00.01 |    9 |
+|   1 |  NESTED LOOPS                  |                   |      1 |        |      1 |00:00:00.01 |    9 |
+|   2 |   NESTED LOOPS                 |                   |      1 |     15 |      1 |00:00:00.01 |    8 |
+|   3 |    NESTED LOOPS                |                   |      1 |      4 |      1 |00:00:00.01 |    6 |
+|   4 |     TABLE ACCESS BY INDEX ROWID| LOCATIONS         |      1 |      1 |      1 |00:00:00.01 |    3 |
+|*  5 |      INDEX RANGE SCAN          | LOC_CITY_IX       |      1 |      1 |      1 |00:00:00.01 |    2 |
+|   6 |     TABLE ACCESS BY INDEX ROWID| DEPARTMENTS       |      1 |      4 |      1 |00:00:00.01 |    3 |
+|*  7 |      INDEX RANGE SCAN          | DEPT_LOCATION_IX  |      1 |      4 |      1 |00:00:00.01 |    2 |
+|*  8 |    INDEX RANGE SCAN            | EMP_DEPARTMENT_IX |      1 |     10 |      1 |00:00:00.01 |    2 |
+|   9 |   TABLE ACCESS BY INDEX ROWID  | EMPLOYEES         |      1 |      4 |      1 |00:00:00.01 |    1 |
+--------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   5 - access("L"."CITY"='London')
+   7 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+   8 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+

@@ -1,0 +1,63 @@
+SQL> conn sys/oracle as sysdba (connect SYS계정 / 비밀번호 as SYS-DBA)
+SQL> show user (user 확인 일반적 SYS가 아님)
+SQL> conn hr/hr (hr 수정)
+SQL> conn sys/oracle as sysdba (다시 접속) 
+SQL> alter user hr identified by hr account unlock; (alter 명령을 통한 hr 비밀번호 풀어놓는다)
+SQL> conn hr/hr (hr 접속)
+SQL> Select * from tab; 
+SQL> Select * from employees; (employees 테이블)
+
+보기 어려우므로 oracle SQL developer 로 접속한다.
+
+사원번호 이름 부서 직급 주민번호 주소 전화번호 이메일 
+
+
+oracle db 안에 data를 저장하는 단계
+
+예시
+
+DB - 나라
+
+TableSpace - 지역
+
+Segment(table, object) - 실제 데이터 저장
+
+Extent
+
+Block(최소 i/o<input/output> 단위) = page
+
+block의 크기는 2k,4k,8k,16k,32k
+
+full table scan (처음부터 끝까지 search)
+unipue scan 
+range scan
+
+select 문 기능 
+
+1. projection : 테이블에 열 단위 추출
+
+desc - 열 값들을 알 수 있다.
+ex) select employee_id from employees;
+
+2. selection : 테이블에 행 단위 추출
+select * 
+from employees
+where employee_id=100;
+
+select절은 컬럼을 지정
+from절은 테이블 지정
+where 절은 행을 제한하는 절을 의미한다.
+
+3. join: 서로 다른 테이블에서 내가 원하는 데이터를 추출하는 방법 -> 정규화 때문에 필요하다.
+
+select department_id from employees where employee_id = 100;
+select department_name from employees where employee_id = 100;
+
+select department_name from departments where department_id=90;
+
+
+select d.department_name
+from employees e, departments d
+where e.department_id=d.department_id
+and e.employee_id=100;
+

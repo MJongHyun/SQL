@@ -1,0 +1,183 @@
+도구->환경설정->데이터베이스->NLS (지역,언어에 따라 값들이 달라진다.)->날짜형식 YYYYMMDD
+
+# VIEW : 하나이상의 테이블에 있는 데이터를 논리적으로 처리하는 오브젝트이다.  (테이블은 물리적으로 가지고 있다.) <뷰는 효과만 준다. 논리적인것이 중요>
+              select 문만 가지고 있다.
+
+create table dept_20 --문제점 중복되는 데이터가 계속 나오기 때문에 유지관리하기가 불편하다.
+as select * from employees where department_id=20;
+
+create table dept_30
+as select * from employees where department_id=30;
+
+create view dept_v20  -- 테이블과 뷰이름 같은 이름으로 사용할수 없다. (각각 object이기 때문에)
+as select * from employees where department_id=20;
+
+create view dept_v30
+as select * from employees where department_id=30;
+
+select * from dept_v20;
+select * from dept_v30;
+
+# 뷰의 장점 : 간접액세스 
+
+create view emp_vw 
+as select employee_id,last_name,department_id
+from employees;
+
+
+select * from emp_vw;  -- 오브젝트 체크 
+
+
+select employee_id,last_name,department_id -- view를 select 한 순간 text값이 실행된다는 것을 의미한다.
+from employees
+
+grant select on hr.emp_vw to ora10; -- 직접 액세스를 하지 않고 간접적으로만 넘기는 것이 view의 장점. 다른방법은 프로그래밍이 있다.
+
+select * from user_views where view_name = 'EMP_VW'; --text값 확인 (select 문)
+
+select * from user_objects where object_name='EMP_VW';
+
+drop view emp_vw; -- 뷰는 삭제가 가능하다.
+
+create or replace view emp_vw -- 뷰는 수정이 불가능하다. (alter가 불가능하다) 그래서 or replace 옵션으로 가능
+as select employee_id,last_name||first_name -- 불가능하다 . 이유는 특수문자 중 || 는 불가능하다. (컬럼으로 읽기 때문에) 그래서 이름을 쓰고 싶다면 별칭으로 사용해야한다.
+from employees;
+
+
+
+create or replace view emp_vw
+as select employee_id,last_name||first_name name -- 별칭을 사용하면 가능하다.!
+from employees;
+
+# 단순 뷰 -- 뷰를 통해서 DML 작업을 할수 있다. 단순 뷰로 가져오더라도 제약조건을 가져올수 있기 때문에 제약조건도 확인을 해야한다.
+ 
+create table emp_new -- 테이블 생성
+as select employee_id, last_name, salary,department_id
+from employees
+where department_id=20;
+
+select * from emp_new;
+
+create view emp_vw -- 단순뷰 : 뷰 받는 select 그룹함수,group by 절, join 조건이 없는 것을 단순 뷰라고 한다.
+as select * from emp_new;
+
+select * from emp_vw;
+
+desc emp_vw;
+
+update emp_vw -- DML 작업
+set department_id = 200;
+
+select * from emp_vw; -- 뷰값과 테이블 값이 모두 수정된 것을 알 수 있다.
+select * from emp_new;
+
+delete from emp_vw; -- 삭제도 가능하다.
+
+insert into emp_vw(employee_id,last_name,salary,department_id) -- insert가 가능하다.
+values(1,'james',1000,10);
+
+select * from emp_new;
+select * from emp_vw;
+
+insert into emp_vw(employee_id,last_name,salary,department_id) -- insert실패 : not null 제약조건이 걸려있기 때문에 불가능하다.
+values(2,null,2000,20);
+
+롤백 후 
+create or replace view emp_vw
+as select employee_id,salary,department_id from emp_new;-- 대체해서 생성
+
+update emp_vw -- 불가 : view에서 last_name의 컬럼을 가지고 있지 않기 때문에 불가능하다. (쳐다보고있는 컬럼은 값은 모든 수정이 가능하다.)
+set last_name='james';
+
+insert into emp_vw(employee_id,salary,department_id) -- 뷰가 참조하고 있는데 테이블에 들어가는데  not null 제약조건이 있는 값이 있기 때문에 INSERT 되지 않는다.
+values(3,2000,10); -- 즉 테이블을 잘 확인해야한다.
+
+단, DELETE는 어느때나 가능하다.
+
+create or replace view emp_vw
+as select employee_id,salary*12 sal,department_id from emp_new; -- 표현식의 일부로 되어있는 것은 insert가 불가능하다. update도 sal 말고 나머지 컬럼은 가능하다. delete는 가능하다.
+
+# 복합 뷰 --뷰 안에 group by , 그룹함수 , 조인문이 들어 있는 뷰 -- DML 작업이 불가능하지만 ( 단,가능하려면 pl/sql trigger 로 할 때는 가능하다.) 
+
+create or replace view empvu20 -- check 제약조건을 거는 것만 가능하다.
+as select * 
+from employees
+where department_id=20 --20번이란 부서만 값이 들어오는것이 가능하다를 의미한다.
+with check option constraint empvu20_ck; -- check 조건식이 없다. 즉,check 제약의 where이 조건식이다.
+
+create or replace view 뷰이름
+as select * 
+from employees
+where ->check 제약 조건식 
+with check option constraint 제약조건식 이름; 
+
+select * from empvu20;
+select * from user_constraints where table_name='EMPVU20';
+
+update empvu20 --check 제약조건 오류로 인해 불가하다.
+set department_id = 30
+where employee_id=201;
+
+-- check 는 insert와 update만 가능하다!
+
+create or replace view empvu20 -- view는 where절 조건값으로 해놓았기 때문에 수정을 하더라도 뷰로 보이지 않는다.
+as select * 
+from employees
+where department_id=20;
+
+drop trigger HR.UPDATE_JOB_HISTORY; -- trigger 가 걸려있어 지우고 실행해야한다.
+
+update empvu20 .
+set department_id = 30
+where employee_id=201;
+
+# with read only -- 읽는것만 가능하다. 즉, DML 불가능하다.
+
+create or replace view empvu20
+as select * 
+from employees
+with read only; -- 읽기만 가능하다.
+
+# 뷰를 생성할 수 있는 이유 : create view  라는 권한이 있기 때문에 가능한 것이다.
+create sequence -- 자동 일련번호 생성이 가능하다.
+
+#sequence : 자동 일련번호를 생성하는 오브젝트 , create sequence 시스템 권한이 필요하다.
+
+create table emp_seq --테이블생성
+(id number, name varchar2(20), day timestamp default systimestamp);
+
+create sequence emp_id_seq -- 한줄만 해도 가능하다 (다른건 기본값으로 지정된다)
+increment by 1 --(1씩 증가한다는 의미) --기본값
+start with 1 -- (1번부터 시작)--기본값
+maxvalue 50 -- (10^27 까지 표현 가능 minvalue는 10^(-6) 까지 가능하다.)
+cache 20 -- (성능에 대한 값)
+nocycle; -- 한cycle 돌고 다시 순환할지 말지를 결정해주는 값
+
+create sequence 시퀀스이름 
+
+alter sequence 시퀀스 이름-- sequence 수정, 단, start with 값은 수정이 불가능 하다. 
+
+drop sequence 시퀀스 이름--start with 값을 수정하고 싶다면 삭제해야한다.
+
+select * from user_sequences where sequence_name='EMP_ID_SEQ';
+
+insert into emp_seq(id,name,day)
+values(emp_id_seq.nextval,user,default); -- seq.nextval (다음사용한 번호를 알려주는 값),user (리턴함수)
+
+select * from emp_seq;
+
+select emp_id_seq.currval from dual; -- emp_id_seq.currval (현재사용한 번호를 return 해주는 가상 컬럼을 의미한다.)
+
+★ 주의할점 : sequence에서 한번 생성한 번호는 rollback을 하더라도 절대 다시 사용할수 없다. 따라서 gap이 생길수도 있다.
+    번호의 gap을 원하지 않는다면 sequence를 사용하지 말고 max(value)를 사용해야한다.
+
+select * from user_sequences where sequence_name='EMP_ID_SEQ';
+# LAST_NUMBER 는 다음 값을 알려주는 것인데 cache에 의해서 값이 달라진다. (cache의 의미는 다음 몇번까지 미리 만들어 놓는거기 때문에 )
+   그러므로 현재 몇번 까지 썼는지 확인해야 한다면 currval로 사용하면 된다.
+
+alter sequence emp_id_seq
+maxvalue 100; -- max값을 바꾸면 last_number 값이 바뀐다.
+
+★ select emp_id_seq.nextval from dual; -- nextval 조회시 조회하면 다음 값이 생성이 되서 다음 sequence 생성시 gap이 생긴다. 따라서 currval 로 확인하는 것이 좋다.
+
+시퀀스가 가장 많이 사용되는곳 : 주문체결 확인 

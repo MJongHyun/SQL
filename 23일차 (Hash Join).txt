@@ -1,0 +1,360 @@
+select * from user_tab_col_statistics where table_name ='LOCATIONS';
+select * from user_tab_col_statistics where table_name ='DEPARTMENTS';
+
+Nested 를 쓰지 않는 이유 : random i/o 가 너무 많이 발생한다.
+
+select e.employee_id, e.salary, d.department_name
+from employees e, departments d
+where e.department_id = d.department_id;
+
+sort merge 단점: 테이블이 너무크면 불리하다. (정렬이란 알고리즘 때문에 너무 좋지 않다.)
+
+select department_id, department_name
+from departments
+order by department_id;
+
+select department_id,employee_id,salary
+from employees
+order by department_id;
+
+# HASH JOIN 
+ - JOIN 되는 건수가 많을 때 유리하다.
+ - Full table scan을 유도 (주로)
+ - 같다(=)라는 비교연산자만 사용 할 때만 가능하다. (다른 연산자는 불가능하다. )
+ - 힌트는 /*+ use_hash */
+ - build (선행), probe (후행)
+
+select e.employee_id, e.salary, d.department_name
+from employees e, departments d
+where e.department_id = d.department_id;
+
+Plan hash value: 1343509718
+
+---------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                              | Name          | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+---------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                  |                   |      1 |        |    106 |00:00:00.01 |      18 |       |       |          |
+|   1 |  MERGE JOIN                          |                   |      1 |    106 |    106 |00:00:00.01 |      18 |       |       |          |
+|   2 |   TABLE ACCESS BY INDEX ROWID| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |      12 |       |       |          |
+|   3 |    INDEX FULL SCAN                  | DEPT_ID_PK    |      1 |     27 |     27 |00:00:00.01 |       6 |       |       |          |
+|*  4 |   SORT JOIN                           |                   |     27 |    107 |    106 |00:00:00.01 |       6 | 15360 | 15360 |14336  (0)|
+|   5 |    TABLE ACCESS FULL                | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       6 |       |       |          |
+---------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+       filter("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+select  /*+ leading(d,e) use_hash(e) */ e.employee_id, e.salary, d.department_name -- leading을 통해 선행테이블을 bulid로 할 수 있도록 잘 생각해서 해야한다.
+from employees e, departments d
+where e.department_id = d.department_id;
+
+# build table -- 가장 먼저 access해야할 테이블 , 기준은 1족 집합의 작은테이블이다. (1족이 아니면 hash key를 만들 때 중복이 될 수 있으므로) , ★★ hash 테이블 생성 
+
+select department_id, department_name 
+from departments
+order by department_id;
+
+# probe table -- build에 가서 확인할 테이블
+
+ select department_id,employee_id,salary
+from employees
+order by department_id;
+Plan hash value: 2052257371
+
+-----------------------------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-----------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |             |      1 |        |    106 |00:00:00.01 |      19 |       |    |             |
+|*  1 |  HASH JOIN         |             |      1 |    106 |    106 |00:00:00.01 |      19 |  1079K|  1079K| 1236K (0)|
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |       6 |       |    |             |
+|   3 |   TABLE ACCESS FULL| EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |      13 |       |    |             |
+-----------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+# 세개의 테이블을 사용할 경우 : 조인한 다음 테이블 값도 작은 테이블로 나오게 할 수 있도록 leading을 잘 써야 한다.
+  hash와 sort를 섞어서 할 수도 있다. 조인하고 보니 큰테이블 일수도 있기 때문에 가능하다. 예) leading(a,b,c) use_nl(b) use_merge(c)
+  
+# 전체를 바라봐야 한다면 hash로 해야할지 sort로 해야할지 결정을 해야한다.
+
+
+
+select  /*+ leading(e,d) use_hash(d) */ e.employee_id, e.salary, d.department_name -- leading을 통해 선행테이블을 bulid로 할 수 있도록 잘 생각해서 해야한다.
+from employees e, departments d
+where e.department_id = d.department_id;
+
+
+Plan hash value: 1782137809
+
+-----------------------------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-----------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |             |      1 |        |    106 |00:00:00.01 |      17 |       |    |             |
+|*  1 |  HASH JOIN         |             |      1 |    106 |    106 |00:00:00.01 |      17 |  1156K|  1156K|  911K (0)|
+|   2 |   TABLE ACCESS FULL| EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       6 |       |    |             |
+|   3 |   TABLE ACCESS FULL| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |      11 |       |    |             |
+-----------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
+-빌드테이블을 만들기위해서 direct하게 읽는다. 
+
+select  /*+ leading(d,e) use_hash(e) */ e.employee_id, e.salary, d.department_name  -- leading을 통해 선행테이블을 bulid로 할 수 있도록 잘 생각해서 해야한다.
+from emp_copye e, departments d
+where e.department_id = d.department_id;
+
+Plan hash value: 2265248520
+
+-----------------------------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-----------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |             |      1 |        |  10600 |00:00:00.01 |     788 |       |    |             |
+|*  1 |  HASH JOIN         |             |      1 |  10600 |  10600 |00:00:00.01 |     788 |  1079K|  1079K| 1271K (0)| -- 부분범위처리가 돌아가고 있기 때문에 
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |       6 |       |    |             |
+|   3 |   TABLE ACCESS FULL| EMP_COPYE   |      1 |  10700 |  10700 |00:00:00.01 |     782 |       |    |             | 10700 / 782 = 13개 씩 probe를 올라오도록 진행. -- 이부분 해결
+-----------------------------------------------------------------------------------------------------------------------
+
+-- break 가 걸린다. 몇개씩만 읽도록 진행한다. set arraysize 에 따라 규격이 정해져서 
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+select department_id, employee_id, salary
+from emp_copye
+
+Plan hash value: 1164022137
+
+-----------------------------------------------------------------------------------------
+| Id  | Operation         | Name      | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-----------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |           |      1 |        |  10700 |00:00:00.01 |     797 |
+|   1 |  TABLE ACCESS FULL| EMP_COPYE |      1 |  10700 |  10700 |00:00:00.01 |     797 |
+-----------------------------------------------------------------------------------------
+
+select department_id, department_name
+from departments
+
+select  /*+ leading(e,d) use_hash(d) */ e.employee_id, e.salary, d.department_name -- leading을 통해 선행테이블을 bulid로 할 수 있도록 잘 생각해서 해야한다.
+from emp_copye e, departments d
+where e.department_id = d.department_id;
+
+
+Plan hash value: 3058798336
+
+-----------------------------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-----------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |             |      1 |        |  10600 |00:00:00.01 |     101 |       |    |             |
+|*  1 |  HASH JOIN         |             |      1 |  10600 |  10600 |00:00:00.01 |     101 |  1252K|  1252K| 1641K (0)|
+|   2 |   TABLE ACCESS FULL| EMP_COPYE   |      1 |  10700 |  10700 |00:00:00.01 |      84 |       |    |             | -- 한꺼번에 여러개를 읽는다. (direct하게 읽어낸다.) buffer에 가지 않고 바로 cursor 로 간다.
+|   3 |   TABLE ACCESS FULL| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |      17 |       |    |             |
+-----------------------------------------------------------------------------------------------------------------------
+< 큰테이블을 build table로 사용할 경우>
+
+1. 메모리 사용량이 너무많다.
+2. 해쉬키 충돌 우려
+
+select num_rows,blocks from user_tables where table_name='EMP_COPYE';
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+SQL> select num_rows,blocks from user_tables where table_name='EMP';
+
+  NUM_ROWS     BLOCKS
+---------- ----------
+       107          5
+
+SQL> select num_rows,blocks from user_tables where table_name='EMP_COPYE';
+
+  NUM_ROWS     BLOCKS
+---------- ----------
+     10700         89    --- num_rows * avg_row_len / 8000이라고 가정 (?) 8000 -> 8K block 안에 row들이 얼마나 쌓여 있는지를 예측하고 싶다.
+
+                            ----- select (10700*50) / 8000 from dual;  -- 66개정도 추정 (즉, 한 block 안에 66개 정도 block이 들어와 있다고 가정)
+		     -- arraysize를 작게 하면 한 block에 계속 값을 가게 된다.
+		    -- arraysize 갯수에 따라 join 하는 갯수를 정해서 정해진 만큼 join 을 한 후 다 하고 다시 join을 하는것을 반복한다.
+
+부분 범위 처리 : 화면에 있는 결과물만 받는 것, 나머지 값들은 대기, 
+
+툴에서 제어
+
+운반단위 - 조절 SQL TOOL
+
+한번에 조절해서 움직일 때 사용되는 용량 arraysize 15 -> 해결: arraysize를 통해서 값을 늘려 해결한다. 
+
+set arraysize 1000
+
+Plan hash value: 2265248520
+
+
+select  /*+ leading(d,e) use_hash(e) */ e.employee_id, e.salary, d.department_name 
+from emp_copye e, departments d
+where e.department_id = d.department_id;
+
+-----------------------------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-----------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |             |      1 |        |  10600 |00:00:00.01 |     101 |       |    |             |
+|*  1 |  HASH JOIN         |             |      1 |  10600 |  10600 |00:00:00.01 |     101 |  1079K|  1079K| 1247K (0)|
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |       6 |       |    |             |
+|   3 |   TABLE ACCESS FULL| EMP_COPYE   |      1 |  10700 |  10700 |00:00:00.01 |      95 |       |    |             | -- probe 조절 해결 
+-----------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+select * from user_extents where segment_name = 'EMP_COPYE';
+
+--extent 12개 64 K 8개씩만 들어 올수 있다
+-- 8개를 올리고 Scan 
+12 * 8 = 96번 최대 수 
+
+probe 테이블에서 값을 불러 올때 arraysize을 얼마나 해야하는지를 정해야 한다. - 운반하는 단위 
+block의 사이즈가 정해져 있어서 block의 크기에 따라 값을 해야한다. ( 값을 크게 잡는다 하더라도 block 안에 있는 row 수에 종속 되어있다.)
+
+arraysize를 1로 한 경우 - 10700개는 나오지 않는다 . 더 작게하면 문제가 더 크기 때문에 일정한 크기로 적어서 한다.
+
+Plan hash value: 2265248520
+
+-----------------------------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-----------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |             |      1 |        |  10600 |00:00:00.03 |    5349 |       |    |             |
+|*  1 |  HASH JOIN         |             |      1 |  10600 |  10600 |00:00:00.03 |    5349 |  1079K|  1079K| 1243K (0)|
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |       6 |       |    |             |
+|   3 |   TABLE ACCESS FULL| EMP_COPYE   |      1 |  10700 |  10700 |00:00:00.02 |    5343 |       |    |             |
+-----------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+select  /*+ leading(l,d,e) use_hash(d) use_hash(e) */ e.employee_id, e.salary, d.department_name, l.city, l.street_address 
+from emp_copye e, departments d, locations l
+where e.department_id = d.department_id
+and d.location_id=l.location_id;
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 3412362693
+
+------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation           | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT    |             |      1 |        |  10600 |00:00:00.01 |     247 |       |       |          |
+|*  1 |  HASH JOIN          |             |      1 |  10600 |  10600 |00:00:00.01 |     247 |   865K|   865K| 1238K (0)|
+|*  2 |   HASH JOIN         |             |      1 |     27 |     27 |00:00:00.01 |      12 |   909K|   909K| 1137K (0)|
+|   3 |    TABLE ACCESS FULL| LOCATIONS   |      1 |     23 |     23 |00:00:00.01 |       6 |       |       |          |
+|   4 |    TABLE ACCESS FULL| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |       6 |       |       |          |
+|   5 |   TABLE ACCESS FULL | EMP_COPYE   |      1 |  10700 |  10700 |00:00:00.01 |     235 |       |       |          |
+------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+   2 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+
+
+select  /*+ leading(e,d,l) use_hash(d) use_hash(l) */ e.employee_id, e.salary, d.department_name, l.city, l.street_address 
+from emp_copye e, departments d, locations l
+where e.department_id = d.department_id
+and d.location_id=l.location_id;
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 3055105011
+
+-- 원하지 않게 나옴: 
+ -- ed 를 조인 하였을 때 테이블이 커서 hash 값이 너무 많이 나오고 뒤에 있는 l보다 크므로 두개를 바꾸어서 실행을 하게 한다.
+------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation           | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT    |             |      1 |        |  10600 |00:00:00.02 |     107 |       |       |          |
+|*  1 |  HASH JOIN          |             |      1 |  10600 |  10600 |00:00:00.02 |     107 |   909K|   909K| 1104K (0)| -- 순서가 바뀐이유 : swap_join
+|   2 |   TABLE ACCESS FULL | LOCATIONS   |      1 |     23 |     23 |00:00:00.01 |       6 |       |       |          |
+|*  3 |   HASH JOIN         |             |      1 |  10600 |  10600 |00:00:00.01 |     101 |  1252K|  1252K| 1628K (0)|
+|   4 |    TABLE ACCESS FULL| EMP_COPYE   |      1 |  10700 |  10700 |00:00:00.01 |      84 |       |       |          |
+|   5 |    TABLE ACCESS FULL| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |      17 |       |       |          |
+------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+   3 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+★ arraysize를 너무크게 하면 화면에 뜨는 값이 너무 많아서 소용이 없으므로 적당히 수를 찾아 buffer가 많이 나오지 않는 값을 찾아야 한다.
+
+# swap_join_inputs(l) - probe 성격을 가지고 있는 값을 build로 바꾼다. (작은테이블을 올려서 풀게 하는방법)
+
+select  /*+ leading(e,d,l) use_hash(d) use_hash(l) swap_join_inputs(l) */ e.employee_id, e.salary, d.department_name, l.city, l.street_address 
+from emp_copye e, departments d, locations l
+where e.department_id = d.department_id
+and d.location_id=l.location_id;
+
+------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation           | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT    |             |      1 |        |  10600 |00:00:00.02 |     107 |       |       |          |
+|*  1 |  HASH JOIN          |             |      1 |  10600 |  10600 |00:00:00.02 |     107 |   909K|   909K| 1110K (0)|
+|   2 |   TABLE ACCESS FULL | LOCATIONS   |      1 |     23 |     23 |00:00:00.01 |       6 |       |       |          |
+|*  3 |   HASH JOIN         |             |      1 |  10600 |  10600 |00:00:00.01 |     101 |  1252K|  1252K| 1639K (0)|
+|   4 |    TABLE ACCESS FULL| EMP_COPYE   |      1 |  10700 |  10700 |00:00:00.01 |      84 |       |       |          |
+|   5 |    TABLE ACCESS FULL| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |      17 |       |       |          |
+------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+   3 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+select  /*+ leading(e,d,l) use_hash(d) use_hash(l) no_swap_join_inputs(l) */ e.employee_id, e.salary, d.department_name, l.city, l.street_address 
+from emp_copye e, departments d, locations l
+where e.department_id = d.department_id
+and d.location_id=l.location_id;
+
+------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation           | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT    |             |      1 |        |  10600 |00:00:00.02 |     103 |       |       |          |
+|*  1 |  HASH JOIN          |             |      1 |  10600 |  10600 |00:00:00.02 |     103 |  1264K|  1264K| 1369K (0)|
+|*  2 |   HASH JOIN         |             |      1 |  10600 |  10600 |00:00:00.01 |      90 |  1252K|  1252K| 1664K (0)|
+|   3 |    TABLE ACCESS FULL| EMP_COPYE   |      1 |  10700 |  10700 |00:00:00.01 |      84 |       |       |          |
+|   4 |    TABLE ACCESS FULL| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |       6 |       |       |          |
+|   5 |   TABLE ACCESS FULL | LOCATIONS   |      1 |     23 |     23 |00:00:00.01 |      13 |       |       |          |
+------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+   2 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+-- hash join 할때는 어차피 full scan을 하기 때문에 full parallel 를 사용해서 쓴다.
+# 대용량 join 은 hash 가 빠르고 병렬처리도 가능하기 때문에 위와 같은 힌트를 사용한다.
+
+select  /*+ leading(e,d,l) use_hash(d) use_hash(l) full(e) parallel(e,2) full(d) parallel(d,2) full(l) parallel(l,2) no_swap_join_inputs(l) */ 
+e.employee_id, e.salary, d.department_name, l.city, l.street_address 
+from emp_copye e, departments d, locations l
+where e.department_id = d.department_id
+and d.location_id=l.location_id;
+

@@ -1,0 +1,161 @@
+# 패키지 커서 지속상태
+
+CREATE OR REPLACE PACKAGE pack_cur
+IS	
+  	PROCEDURE open;
+	PROCEDURE next(p_num number);
+	PROCEDURE close;
+END pack_cur;
+/
+
+CREATE OR REPLACE PACKAGE BODY pack_cur -- body에서 선언한 값들은 private 값들이다. 즉, session 밖에서 사용불가
+IS
+	CURSOR c1 IS  
+		SELECT  employee_id, last_name
+		FROM    employees
+		ORDER BY employee_id DESC;
+	v_empno NUMBER;
+	v_ename VARCHAR2(10);
+
+  PROCEDURE open 
+  IS  
+	BEGIN  -- 기존 익명의 프로그램, 프로시저,함수에서 cursor는 자동으로 닫힌다. 하지만 package에서는 그렇지 않다. / 즉, 이 상태에선 package cursor는 계속 open 상태이다.
+	 IF NOT c1%isopen then
+           OPEN c1;
+           dbms_output.put_line('c1 cursor open');
+         END IF;
+  END open;
+  
+  PROCEDURE next(p_num number)
+  IS  
+  BEGIN  
+		LOOP 
+		    EXIT WHEN c1%ROWCOUNT >= p_num;
+		    FETCH c1 INTO v_empno, v_ename;
+		    DBMS_OUTPUT.PUT_LINE('Id :' ||v_empno||'  Name :' ||v_ename);
+		END LOOP;
+   END next;
+
+   PROCEDURE close IS
+   BEGIN오후 4:07 2018-07-18
+			IF c1%isopen then
+          			close c1;
+				dbms_output.put_line('c1 cursor close');
+      			END IF;
+   END close;
+END pack_cur;
+/
+<<Package>>
+
+SQL> SET SERVEROUTPUT ON 
+         
+SQL> EXECUTE pack_cur.open -- cursor와의 연결을 확인 할 수  있다.
+c1 cursor open
+
+PL/SQL procedure successfully completed.
+   
+SQL> EXECUTE pack_cur.next(3) -- 3을 통해 실행
+Id :206  Name :Gietz
+Id :205  Name :Higgins
+Id :204  Name :Baer
+
+PL/SQL procedure successfully completed.
+
+
+SQL> EXECUTE pack_cur.next(6) -- 6을 통해 실행 (fetch는 값이 삭제되고 하는것이 아니라 위 값이 실행되고 그대로 실행이 된다.) <계속 open 되어있으므로>
+Id :203  Name :Mavris
+Id :202  Name :Fay
+Id :201  Name :Hartstein
+
+PL/SQL procedure successfully completed.
+
+SQL> EXECUTE pack_cur.close
+c1 cursor close
+
+PL/SQL procedure successfully completed.
+
+# 프로그램의 문제점 : 오직 한개씩만 값을 fetch, fetch를 한개 씩 할 수 밖에 없다.
+
+# 지속상태_패키지 커서_FETCH_BULK_LIMIT
+
+CREATE OR REPLACE PACKAGE pack_cur
+IS	
+  	PROCEDURE open;
+	PROCEDURE next(p_num number);
+	PROCEDURE close;
+END pack_cur;
+/
+
+CREATE OR REPLACE PACKAGE BODY pack_cur
+IS
+	CURSOR c1 IS  
+		SELECT  employee_id, last_name
+		FROM    employees
+		ORDER BY employee_id DESC;
+	
+  PROCEDURE open 
+  IS  
+  BEGIN  
+      IF NOT c1%isopen then
+          OPEN c1;
+          dbms_output.put_line('c1 cursor open');
+      END IF;
+  END open;
+  
+  PROCEDURE next(p_num number)
+  IS
+	type tab_type is table of c1%rowtype;
+	v_tab tab_type;  
+  BEGIN  
+       
+	IF c1%notfound THEN
+	  dbms_output.put_line('데이터가 없습니다.');
+	  return; -- 프로시저에서 return은 종료! 
+	ELSE
+		FETCH c1 BULK COLLECT INTO v_tab limit p_num; -- 차이점! limit : bulk row수를 제한 할 수 있다 (fetch 커서이름 bulk collect into 배열이름 limit 제한수 ) 
+      	END IF;							 select 에서 bulk collect를 사용할 수 는 없다. 오직 cursor에서만 가능하다.
+ 								  값을 제한할 수 있어서 좋다.  
+   FOR i IN v_tab.first..v_tab.last LOOP
+     DBMS_OUTPUT.PUT_LINE('Id :' ||v_tab(i).employee_id||'  Name :' ||v_tab(i).last_name);
+   END LOOP;
+  END next;
+
+	PROCEDURE close IS
+	BEGIN
+			IF c1%isopen then
+          			close c1;
+				dbms_output.put_line('c1 cursor close');
+      			END IF;
+	END close;
+END pack_cur;
+/
+<<Package 실행>>
+
+SQL> SET SERVEROUTPUT ON 
+         
+SQL> EXECUTE pack_cur.open
+c1 cursor open
+
+PL/SQL procedure successfully completed.
+   
+SQL> EXECUTE pack_cur.next(3)
+Id :206  Name :Gietz
+Id :205  Name :Higgins
+Id :204  Name :Baer
+
+PL/SQL procedure successfully completed.
+
+
+SQL> EXECUTE pack_cur.next(3)
+Id :203  Name :Mavris
+Id :202  Name :Fay
+Id :201  Name :Hartstein
+
+PL/SQL procedure successfully completed.
+
+SQL> EXECUTE pack_cur.close
+c1 cursor close
+
+PL/SQL procedure successfully completed.
+
+SQL> EXECUTE pack_cur.next(50) -- 50개 실행

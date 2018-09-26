@@ -1,0 +1,500 @@
+select ix.index_name, ix.index_type, ix.uniqueness, ic.column_name, ix.index_name 
+from user_indexes ix, user_ind_columns ic
+where ix.index_name = ic.index_name
+and ix.table_name = 'EMPLOYEES';
+
+EMP_EMP_ID_PK EMP_JOB_IX
+
+select employee_id, job_id
+from employees
+where employee_id < 150
+and job_id = 'ST_CLERK';
+
+
+SQL> select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------------------------------------------
+SQL_ID  f4k2fd3y9qbk0, child number 0
+-------------------------------------
+select employee_id, job_id from employees where employee_id < 150 and
+job_id = 'ST_CLERK'
+
+Plan hash value: 603312277
+
+----------------------------------------------------------------------------------------------------------------
+| Id  | Operation                   | Name          | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |
+----------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |               |      1 |        |     20 |00:00:00.01 |       6 |      1 |
+|*  1 |  TABLE ACCESS BY INDEX ROWID| EMPLOYEES     |      1 |      9 |     20 |00:00:00.01 |       6 |      1 |
+|*  2 |   INDEX RANGE SCAN          | EMP_EMP_ID_PK |      1 |     50 |     50 |00:00:00.01 |       3 |      1 |
+----------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter("JOB_ID"='ST_CLERK') - 나머지 하나는 filter로 간다.
+   2 - access("EMPLOYEE_ID"<150) - 하나가 access 이면
+
+50개 들어 갓는데 30개 버림 - clustering이 좋아서 쓰는거
+
+만약 clustering이 나쁘다면 밑에 와 같이 나온다. (range로 하면 좋지 않기 때문에)
+
+select /*+ index_join(e emp_emp_id_pk emp_job_ix) */ employee_id, job_id -- join이 없는데 hash가 나옴 
+from employees e
+where employee_id < 150 -- 150 미만의 rowid
+and job_id = 'ST_CLERK'; -- rowid  두개가 해당하는 rowid를 찾는 것
+
+index_join(테이블이름, 인덱스 이름) - 임의적으로 clustering이 나쁘면 돌아가는 것
+
+Plan hash value: 3796778727
+
+-------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name             | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |  OMem |  1Mem | Used-Mem |
+-------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |                  |      1 |        |     20 |00:00:00.01 |       4 |      1 |       |       |          |
+|*  1 |  VIEW              | index$_join$_001 |      1 |      9 |     20 |00:00:00.01 |       4 |      1 |       |       |          | -- 계산을 하려면 가상의 테이블을 만들어서 생성
+|*  2 |   HASH JOIN        |                  |      1 |        |     20 |00:00:00.01 |       4 |      1 |  1011K|  1011K| 1460K (0)|
+|*  3 |    INDEX RANGE SCAN| EMP_JOB_IX       |      1 |      9 |     20 |00:00:00.01 |       1 |      1 |       |       |          | --build
+|*  4 |    INDEX RANGE SCAN| EMP_EMP_ID_PK    |      1 |      9 |     50 |00:00:00.01 |       3 |      0 |       |       |          | -- probe
+-------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter(("JOB_ID"='ST_CLERK' AND "EMPLOYEE_ID"<150))
+   2 - access(ROWID=ROWID)
+   3 - access("JOB_ID"='ST_CLERK') -- 해당되는 id만 block 생성
+   4 - access("EMPLOYEE_ID"<150)
+
+여기서 해쉬키는 rowid이다.
+
+select *
+from employees
+where department_id in (select department_id
+		        from departments); -- 부서가 소속된 사람들만 뽑은 것 
+
+
+Plan hash value: 1445457117
+
+-----------------------------------------------------------------------------------------
+| Id  | Operation         | Name      | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-----------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |           |      1 |        |    106 |00:00:00.01 |      13 |
+|*  1 |  TABLE ACCESS FULL| EMPLOYEES |      1 |    106 |    106 |00:00:00.01 |      13 |
+-----------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter("DEPARTMENT_ID" IS NOT NULL)
+
+select e.*
+from employees e , departments d
+where e.department_id = d. department_id;
+
+실행계획에서 변환 한 값
+
+select *
+from employees
+where department_id is not null;
+
+이렇게 되는 이유 : foreign key 제약조건이 걸려 있기 때문에 가능하다. (부서테이블로 가서 굳이 비교할 필요가 없다.)
+
+Plan hash value: 1445457117
+
+-----------------------------------------------------------------------------------------
+| Id  | Operation         | Name      | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-----------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |           |      1 |        |    106 |00:00:00.01 |      13 |
+|*  1 |  TABLE ACCESS FULL| EMPLOYEES |      1 |    106 |    106 |00:00:00.01 |      13 |
+-----------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter("E"."DEPARTMENT_ID" IS NOT NULL)
+
+
+-- join이나 subquery가 같다. 
+
+
+select e.*,d.*
+from employees e , departments d
+where e.department_id = d. department_id;
+
+
+------------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |  OMem |  1Mem | Used-Mem |
+------------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |             |      1 |        |    106 |00:00:00.01 |      18 |      1 |       |       |          |
+|   1 |  MERGE JOIN                  |             |      1 |    106 |    106 |00:00:00.01 |      18 |      1 |       |       |          |
+|   2 |   TABLE ACCESS BY INDEX ROWID| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |      12 |      1 |       |       |          |
+|   3 |    INDEX FULL SCAN           | DEPT_ID_PK  |      1 |     27 |     27 |00:00:00.01 |       6 |      1 |       |       |          |
+|*  4 |   SORT JOIN                  |             |     27 |    107 |    106 |00:00:00.01 |       6 |      0 | 22528 | 22528 |20480  (0)|
+|   5 |    TABLE ACCESS FULL         | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       6 |      0 |       |       |          |
+------------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+       filter("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+서브쿼리와 조인절의 차이점 : 서브쿼리절은 메인쿼리 절 값만 가져올 수 있다. 하지만 조인은 평등하기 때문에 from 절에 있는 모든 값을 출력하는 것이 가능하다.
+서브쿼리 : 종속관계 
+조인 : 평등한 관계 -- 오라클은 조인을 더 좋아한다.
+
+create table emp_test
+as select * from employees;
+
+create table dept_test
+as select * from departments;
+
+select e.*
+from emp_test e, dept_test d
+where e.department_id = d. department_id;
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 2815500728
+
+---------------------------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name      | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+---------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |           |      1 |        |    106 |00:00:00.01 |      14 |       |    |     |
+|*  1 |  HASH JOIN         |           |      1 |    106 |    106 |00:00:00.01 |      14 |  1517K|  1517K| 1234K (0)|
+|   2 |   TABLE ACCESS FULL| DEPT_TEST |      1 |     27 |     27 |00:00:00.01 |       3 |       |    |     |
+|   3 |   TABLE ACCESS FULL| EMP_TEST  |      1 |    107 |    107 |00:00:00.01 |      11 |       |    |     |
+---------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+Note
+-----
+   - dynamic sampling used for this statement (level=2)
+
+
+★★foreign key 를 사용하는 경우 : 1. 데이터 품질 2. 위와 같이 다른테이블로 엑세스 할필요 없고 하나의 테이블에서만 값 추출이 가능하다.
+
+
+# fliter 방식을 사용 하게 하는 힌트 (no_unnest)
+
+select *
+from employees
+where department_id in (select /*+ no_unnest */ department_id from departments); -- 순수하게 돌아 가는 힌트방법 / 상호관계 서브쿼리로 돌아가게 된다.
+
+
+
+Plan hash value: 2979032901
+
+-------------------------------------------------------------------------------------------
+| Id  | Operation          | Name       | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |            |      1 |        |    106 |00:00:00.01 |      24 |
+|*  1 |  FILTER            |            |      1 |        |    106 |00:00:00.01 |      24 |
+|   2 |   TABLE ACCESS FULL| EMPLOYEES  |      1 |    107 |    107 |00:00:00.01 |      13 |
+|*  3 |   INDEX UNIQUE SCAN| DEPT_ID_PK |     12 |      1 |     11 |00:00:00.01 |      11 | -- departments의 dept_id
+-------------------------------------------------------------------------------------------
+
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter( IS NOT NULL)
+   3 - access("DEPARTMENT_ID"=:B1) - 바인드 변수 (인수값으로 받겠다라는 뜻)
+
+select *
+from employees e
+where exists (select 'x'
+	     from departments
+	     where department_id = e. department_id); - join으로 풀린다.
+
+
+-----------------------------------------------------------------------------------------
+| Id  | Operation         | Name      | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-----------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |           |      1 |        |    106 |00:00:00.01 |      13 |
+|*  1 |  TABLE ACCESS FULL| EMPLOYEES |      1 |    106 |    106 |00:00:00.01 |      13 |
+-----------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter("E"."DEPARTMENT_ID" IS NOT NULL)
+
+select *
+from employees e
+where exists (select /*+ no_unnest*/ 'x'
+	     from departments
+	     where department_id = e. department_id);
+
+Plan hash value: 2979032901
+
+-------------------------------------------------------------------------------------------
+| Id  | Operation          | Name       | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |            |      1 |        |    106 |00:00:00.01 |      24 |
+|*  1 |  FILTER            |            |      1 |        |    106 |00:00:00.01 |      24 |
+|   2 |   TABLE ACCESS FULL| EMPLOYEES  |      1 |    107 |    107 |00:00:00.01 |      13 |
+|*  3 |   INDEX UNIQUE SCAN| DEPT_ID_PK |     12 |      1 |     11 |00:00:00.01 |      11 | : 왜 107로 시작하지 않았을까 , 
+									         개선: 중복되는 키를 배제 
+-------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter( IS NOT NULL)
+   3 - access("DEPARTMENT_ID"=:B1) -- 변수 처리 되는 이유 : 상관관계 서브쿼리로 되기 때문에 값을 메인쿼리절에서 받아야 해서 변수로 하게 된다.
+
+실행순서 1. join 2. exists 3. in (oracle이 선호하는 순서)
+
+in 은 값을 찾았어도 계속 실행한다. 하지만, exists는 찾으면 종료 되므로 exists가 더 좋다.
+
+쿼리 처리방하는 방석 (in, exists)
+filter 방식으로 실행계획이 나오면 메인 쿼리에서 읽히는 row마다 서브쿼리를 반복 수행 하면서 조건에 맞는 데이터를 찾는 방식
+
+단점 : row 줄 수 마다 쿼리 값을 실행해야 한다.
+
+
+해결방안: cache 를 뒤에서 달아 놓는다. (중복된 값을 제거하기 위해서) 
+cache에 검색한 값을 넣어 놓는다 . 그리고 다음값이 왔을 때 cache를 확인하고 있다면 검색하지 않고 없다면 테이블을 검색하러 간다.
+
+select e.employee_id, e.department_id, d.department_id, d.department_name -- 비효율적 인 이유 : 찾은 값을 또 찾아야 한다.
+from employees e, departments d
+where e.department_id = d.department_id
+order by 2,3;
+
+여기에도 cache를 달아 놓으면 좋다. 그래서 하는방법 스칼라 서브쿼리 식!
+
+# 스칼라 서브쿼리 식 
+
+장점 : 1 . outer join 값도 나온다.
+        2 . cache 기능이 가능하다.
+
+select employee_id, department_id, (select department_name
+				from departments
+				where department_id = e.department_id) -- select 문에서 cache가 생성 (cache 기능★)
+from employees e;
+
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 1821517685
+
+-----------------------------------------------------------------------------------------------------
+| Id  | Operation                   | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-----------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |             |      1 |        |    107 |00:00:00.01 |      14 | -- 여기선 0 번을 해석하면 안된다.
+|   1 |  TABLE ACCESS BY INDEX ROWID| DEPARTMENTS |     12 |      1 |     11 |00:00:00.01 |      16 |
+|*  2 |   INDEX UNIQUE SCAN         | DEPT_ID_PK  |     12 |      1 |     11 |00:00:00.01 |       5 | -- cache를 통해 값을 구별해서 돌아간다.
+|   3 |  TABLE ACCESS FULL          | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |      14 | -- 제일먼저 돌아간다. 
+-----------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("DEPARTMENT_ID"=:B1)
+
+select 문장 순서와 같이 from 절이 먼저 돌아 가고 where 절 그리고 select 절이 돌아간다.
+
+1-2 -> 부서에 11번 만큼 갔다라는것을 확인 할 수 있다.
+
+★★★ 중복되는 값이 많으면 스칼라 서브쿼리식이 좋다.
+
+단점: 괄호를 연 공간은 컬럼을 하나밖에 적을수 없다. 그래서 연결 연산자로 연결을 하게 되면 오류가 나지 않는다. (단일컬럼 단일 값만 지향한다.)
+
+
+select employee_id, department_id, (select department_name || manager_id
+				from departments
+				where department_id = e.department_id) 
+from employees e;
+
+# unnest - join의 방식으로 풀겠다는 힌트, 동일한 결과를 보장된다면 조인문으로 변환한다. 
+	- 조인으로 변환하면 다양한 액세스 경로, 조인 방법을 결정 할 수 있기 때문에 변환한다.
+	- 힌트 : unnest (조인문) , no_unnest (filter방식)
+select *
+from employees e
+where exists (select /*+ unnest*/ 'x'
+	     from departments
+	     where department_id = e. department_id);
+
+select *
+from departments d
+where exists (select 'x' from employees where department_id = d.department_id);
+
+select d.*
+from employees e, departments d
+where e.department_id = d.department_id ; m족의 갯수만큼 나올 수 있다.
+
+두 개의 결과는 다르다. 
+
+select *
+from employees
+where department_id in (select department_id from departments where location_id=1500); - unnest (일반적 서브쿼리 수행방식)
+            m족 		1족   join 해도 문제가 없다 .
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+-------------------------------------------------------------------------------------------------------------
+| Id  | Operation                     | Name              | Starts | E-Rows | A-Rows |   A-Time   |Buffers |
+-------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT              |                   |      1 |        |     45 |00:00:00.01 |12 |
+|   1 |  NESTED LOOPS                 |                   |      1 |        |     45 |00:00:00.01 |12 |
+|   2 |   NESTED LOOPS                |                   |      1 |     10 |     45 |00:00:00.01 |7 |
+|   3 |    TABLE ACCESS BY INDEX ROWID| DEPARTMENTS       |      1 |      1 |      1 |00:00:00.01 | 3 |
+|*  4 |     INDEX RANGE SCAN          | DEPT_LOCATION_IX  |      1 |      1 |      1 |00:00:00.01 |      2 |
+|*  5 |    INDEX RANGE SCAN           | EMP_DEPARTMENT_IX |      1 |     10 |     45 |00:00:00.01 |      4 |
+|   6 |   TABLE ACCESS BY INDEX ROWID | EMPLOYEES         |     45 |     10 |     45 |00:00:00.01 |      5 |
+-------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("LOCATION_ID"=1500)
+   5 - access("DEPARTMENT_ID"="DEPARTMENT_ID")
+
+
+select e.*
+from employees e, departments d
+where e.department_id = d.department_id
+and location_id=1500; -- 같은값 
+
+select *
+from employees
+where department_id in (select /*+ no_unnest */ department_id from departments where location_id=1500); 
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+
+----------------------------------------------------------------------------------------------------
+--
+
+| Id  | Operation                    | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers|
+------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |             |      1 |        |     45 |00:00:00.01 |      31|
+
+|*  1 |  FILTER                      |             |      1 |        |     45 |00:00:00.01 |      3 |
+
+|   2 |   TABLE ACCESS FULL          | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       9 |
+
+|*  3 |   TABLE ACCESS BY INDEX ROWID| DEPARTMENTS |     12 |      1 |      1 |00:00:00.01 |      22 |
+
+|*  4 |    INDEX UNIQUE SCAN         | DEPT_ID_PK  |     12 |      1 |     11 |00:00:00.01 |      11|
+
+------------------------------------------------------------------------------------------------------
+
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter( IS NOT NULL)
+   3 - filter("LOCATION_ID"=1500)
+   4 - access("DEPARTMENT_ID"=:B1)
+
+select *
+from employees e
+where exists (select /*+ no_unnest */ 'x'
+		from departments
+		where  e.department_id = department_id
+		and location_id = 1500); -- 같은값 
+
+★★★서브쿼리를 조인으로 변환 
+1. 동일한 결과를 보장한다면 조인문으로 변환한다.
+2. 메인쿼리의 employees 테이블과 서브쿼리 departments 테이블이 m:1  관계이기 때문에 조인문으로 바꾸더라도 쿼리결과가 보장된다. - 바꾸게 되면 중복이 가능해서 조인이 안된다. 
+3. departments 테이블이 기준집합이므로 결과 집합은 departments 테이블의 총 건수를 넘지 않아야 한다.
+   만약 조인문장으로 변환한다면 m족 집합인 employees 테이블 결과집합으로 만들어지기 때문에 잘못된 결과가 나온다.
+
+---------------------------------------------------------------------------------------------------------------------------------------
+
+select *
+from departments d
+where exists ( select 'x' from employees where department_id = d.department_id);
+
+# SEMI JOIN : 메인쿼리절이 driving 되고 서브쿼리절이 inner가 되서 조인의 값으로 해서 값이 있다면 다음값은 절대 보지 않는다. (1:m 일때 메인쿼리 : 서브쿼리)
+		1. 서브쿼리를 조인으로 바꾼다.
+		2. 조인으로 바뀐 서브쿼리는 항상 후행 (inner) 가 된다.
+		3. 메인쿼리 (선행테이블(outer))의 row가 서브쿼리(후행테이블)의 row와 match 되면 조인조건의 만족되니 해당 row에 대해서 더이상 검색을 진행하지 않는다.
+		   그다음 메인쿼리의 row을 가지고 다시 수행한다.
+			exists 형식을 조인형식으로 바꿨다고 생각하면 된다.
+		4. 메인이 무조건 (1족) driving 이여야 하고 서브가 (m족) inner여야 한다.
+
+
+Plan hash value: 2605691773
+
+--------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |                   |      1 |        |     11 |00:00:00.01 |      10 |
+|   1 |  NESTED LOOPS SEMI |                   |      1 |     10 |     11 |00:00:00.01 |      10 | 
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |       7 |
+|*  3 |   INDEX RANGE SCAN | EMP_DEPARTMENT_IX |     27 |     41 |     11 |00:00:00.01 |       3 |
+--------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+select d.*
+from employees e, departments d
+where e.department_id = d.department_id ;
+
+
+Plan hash value: 1275345128
+
+--------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |                   |      1 |        |    106 |00:00:00.01 |      24 |
+|   1 |  NESTED LOOPS      |                   |      1 |    106 |    106 |00:00:00.01 |      24 |
+|   2 |   TABLE ACCESS FULL| DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |      11 |
+|*  3 |   INDEX RANGE SCAN | EMP_DEPARTMENT_IX |     27 |      4 |    106 |00:00:00.01 |      13 |
+--------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+join 으로 해결을 하고 싶다면
+
+select distinct d.*
+from employees e, departments d
+where e.department_id = d.department_id ;
+
+select d.*
+from (select distinct department_id from employees ) e, departments d
+where e.department_id = d.department_id;
+
+-------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation            | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |OMem |  1Mem | Used-Mem |
+-------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT     |                   |      1 |        |     11 |00:00:00.01 |       9 |       |       |          |
+
+|   1 |  VIEW                | VM_NWVW_1         |      1 |    106 |     11 |00:00:00.01 |       9 |       |       |          |
+
+|   2 |   HASH UNIQUE        |                   |      1 |    106 |     11 |00:00:00.01 |       9 |   858K|   858K| 1076K (0)| -- 문제점: 데이터가 커지면 해쉬가 돌아가면 좋지않다.
+
+|   3 |    NESTED LOOPS      |                   |      1 |    106 |    106 |00:00:00.01 |       9 |       |       |          |
+
+|   4 |     TABLE ACCESS FULL| DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |       6 |       |       |          |
+
+|*  5 |     INDEX RANGE SCAN | EMP_DEPARTMENT_IX |     27 |      4 |    106 |00:00:00.01 |       3 |       |       |          |
+
+-------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   5 - access("DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+select department_id, department_name -- outer
+from departments;
+
+select department_id  -- inner 
+from employees
+order by 1;

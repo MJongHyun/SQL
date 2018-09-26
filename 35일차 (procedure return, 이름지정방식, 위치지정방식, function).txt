@@ -1,0 +1,420 @@
+# return : 프로시저의 return 문 - 뒤에 다가 아무것도 적으면 안된다. / return 문을 만날 시 프로그램을 바로 종료. (정상적 종료)
+
+
+[문제37] 사원번호를 입력 값으로 받아서 그 사원의 이름, 급여, 부서 이름을 출력하는 query_emp 프로시저 생성하세요.
+       단 100번 사원이 입력 값으로 들어오면 프로그램은 아무런 작업하지 않고 종료 될 수 있어야 합니다. 
+       또한 사원이 없을 경우 예외 사항 처리해주세요.
+
+
+SQL> execute query_emp(100)
+
+PL/SQL procedure successfully completed.
+
+
+SQL> execute query_emp(101)
+사원 이름: Kochhar 사원 급여: 17000 사원 부서 이름: Executive
+
+PL/SQL procedure successfully completed.
+
+
+SQL> execute query_emp(300)
+300 존재하지 않는 사원입니다.
+
+PL/SQL procedure successfully completed.
+
+create or replace procedure query_emp(p_id in number)
+is
+
+
+	v_name employees.last_name%type;
+	v_sal employees.salary%type;
+	v_dept_name departments.department_name%type;
+	
+begin
+	
+	if p_id=100 then
+		return; /* 무조건 종료*/
+	else	
+		select e.last_name,e.salary,d.department_name
+		into v_name, v_sal, v_dept_name
+		from employees e, departments d
+		where e.department_id=d.department_id
+		and e.employee_id=p_id;
+		dbms_output.put_line('사원 이름: '|| v_name ||' 사원 급여: '|| v_sal ||' 부서이름 : '|| v_dept_name);
+	end if;		 
+
+exception
+	
+
+	when no_data_found then
+		dbms_output.put_line(p_id||' 존재하지 않는 사원입니다.');
+
+	when others then
+    		dbms_output.put_line(sqlerrm);
+
+end;
+/
+
+# 에러 확인 : show error;
+# 간접액세스를 하기 위한 프로그램 : 다 보여줄 필요는 없고 간단한 값들로만 나오게 만든 프로그램
+
+# end query_emp;- end 할 시 뒤에 block이름을 적어서 사용이 가능하다. (정리할 때 사용하면 좋다.)
+
+
+# DBA 접속
+
+conn sys/oracle as sysdba - dba 접속
+
+create user happy -- 유저 생성
+identified by oracle;
+
+grant create session to happy; -- 세션권한
+
+select * from dba_sys_privs where grantee='HAPPY'; -- 권한부여 확인
+
+
+GRANTEE                                                      PRIVILEGE                                                                ADMIN_
+------------------------------------------------------------ -------------------------------------------------------------------------------- ------
+HAPPY                                                        CREATE SESSION                                                           NO
+
+# HAPPY 접속
+
+conn happy/oracle -- happy 접속
+
+show user -- 유저확인
+USER is "HAPPY"
+
+select * from user_tab_privs; -- object 권한 확인
+select * from user_sys_privs; -- system 권한 확인
+
+select * from hr.employees; -- 이유 : object 권한을 받지 않았기 때문에 불가능하다.
+
+ERROR at line 1: -- object 권한은 이와 같이 나온다.
+ORA-00942: table or view does not exist
+
+# HR 접속
+
+grant execute on query_emp to happy; -- 프로시저 실행 권한부여
+
+
+# HAPPY 확인
+
+SQL> select * from user_tab_privs;
+
+GRANTEE                                                      OWNER                                                TABLE_NAME
+------------------------------------------------------------ ------------------------------------------------------------ ------------------------------------------------------------
+GRANTOR                                                      PRIVILEGE                                                                GRANTA HIERAR
+------------------------------------------------------------ -------------------------------------------------------------------------------- ------ ------
+HAPPY                                                        HR                                                   QUERY_EMP
+HR                                                           EXECUTE                                                                  NO     NO
+
+ set serveroutput on;
+ exec hr.query_emp(101); -- # 이를 간접액세스 라고 한다. (exec 유저이름.프로시저이름(해당값))
+
+ 사원 이름: Kochhar 사원 급여: 17000 부서이름 : Executive
+
+# HR 접속
+
+revoke execute on query_emp from happy; -- 권한 부여 취소 
+grant select on employees to happy; -- 직접 액세스 할 수 있도록 권한을 주는 것을 의미.
+
+# HAPPY 접속
+
+SQL> exec hr.query_emp(101); -- 권한 회수를 의심하고 권한부여를 다시 확인한다.
+BEGIN hr.query_emp(101); END;
+
+      *
+ERROR at line 1:
+ORA-06550: line 1, column 7:
+PLS-00201: identifier 'HR.QUERY_EMP' must be declared
+ORA-06550: line 1, column 7:
+PL/SQL: Statement ignored
+
+select * from user_tab_privs;
+
+# 직접 권한을 주는 것도 있지만 데이터 값의 중요성에 따라 바로 주는 것은 보안상의 위험이 따를 수 있기 때문에 프로시저로 만들어서 주는 경우가 있다.
+
+SQL> update hr.employees  -- 오류: 권한을 select 문으로만 줬기 때문에 update는 사용 불가하다는 요류가 뜬다. (select 문과 다르다.)
+  2  set salary=salary *1.1
+  3  where employee_id=101;
+update hr.employees
+          *
+ERROR at line 1:
+ORA-01031: insufficient privileges
+
+# hr 접속
+
+grant execute on sal_update_proc to happy;
+
+# happy 접속
+
+execute hr.sal_update_proc (100); -- 간접액세스
+
+# hr 에서 실행
+
+update employees -- lock이 걸린다 이유 : 트랜잭션 종료를 하지 않았기 때문에 반드시 실행후 rollback 또는 commit을 해야한다.
+set salary = salary * 1.2
+where employee_id=100;
+
+create or replace procedure sp_comm 
+(p_id  in     employees.employee_id%type,
+p_name out    employees.last_name%type, 
+p_sal  out    employees.salary%type, 
+p_comm in out employees.commission_pct%type)
+
+is
+	v_comm employees.commission_pct%type;
+
+begin
+	select last_name, salary, nvl(commission_pct,0)
+	into p_name, p_sal, v_comm
+	from employees
+	where employee_id = p_id;
+
+	p_comm := p_comm+v_comm;
+
+exception
+
+	when no_data_found then
+		raise_application_error(-20000,sqlerrm);
+	when others then
+		raise_application_error(-20001,sqlerrm);
+end sp_comm;
+/
+
+show error
+
+desc sp_comm -- %type을 쓰면 size와 type을 다 보여주지만 선언할 때 사이즈를 쓰면 안된다.
+
+select text from user_source where name = 'SP_COMM'; /* 프로시저문을 다 볼수 있다. */
+
+var g_name varchar2(30)
+var g_sal number
+var g_comm number
+var g_id number
+
+execute :g_id :=145
+execute :g_comm := 0.1 -- 초기값 생성
+
+print g_name g_sal g_comm -- 내부적 계산 후 
+
+exec sp_comm(:g_id,:g_name,:g_sal,:g_comm) -- 출력 (프로시저 실행) <실제 매개변수는 create에 선언된 값들과 맞게 해서 선언한다.>
+
+print g_name g_sal g_comm
+-------------------------------------------------------------------------------------------------
+
+create table sawon(id number, name varchar2(30), day date, deptno number); -- 형식매개변수
+
+create or replace procedure sawon_in_proc
+(p_id    in number,
+p_name   in varchar2,
+p_day    in date default sysdate,
+p_deptno in number default 0) /* default 는 초기값 이므로 초기값은 p_deptno in number :=0 으로 선언해도 같다. */
+is
+begin
+	insert into sawon (id,name,day,deptno) 
+	values(p_id,p_name,p_day,p_deptno);
+end sawon_in_proc;
+/
+
+-- 직접 insert가 되지 않는다면 procedure로 해서 insert를 하는 방법이다.
+
+desc sawon_in_proc -- default는 소스로만 확인이 가능하다. 걸려있는지만 알 수 있다.
+
+exec sawon_in_proc(1,'홍길동',to_date('2018-01-01','yyyy-mm-dd'),10) <위치 지정 방식>
+
+select * from sawon;
+
+★★ 이름 지정 방식: 형식매개변수의 이름으로 해서 넣어야 하는 경우 /* 프로시저이름(형식매개변수 => 값) */ 
+
+exec sawon_in_proc(p_id => 2, p_name => '박찬호', p_deptno => 20)
+
+exec sawon_in_proc(3,'손흥민',p_day=>to_date('2017-01-01','yyyy-mm-dd')) -- <조합방식>
+
+select * from sawon;
+
+# 주의 할 점 : 이름지정방식으로 한 경우 그 뒤에 값은 모두 이름방식으로 해야한다.
+
+exec sawon_in_proc(p_id => 4, '제임스', p_day=>to_date('2017-01-01','yyyy-mm-dd'))
+
+PLS-00312: a positional parameter association may not follow a named association
+ORA-06550: line 1, column 7:
+PL/SQL: Statement ignored
+
+# 이름지정이 나온이유 : defalut 값을 빼더라도 그대로 값을 나오게 하기 위해 즉, 편하게 하기 위해서.
+
+1.
+
+drop table emp purge;
+drop table dept purge;
+
+create table emp as select * from employees;
+create table dept as select * from departments;
+
+alter table emp add constraint empid_pk primary key(employee_id);
+alter table dept add constraint deptid_pk primary key(department_id);
+alter table dept add constraint dept_mgr_id_fk foreign key(manager_id) 
+	references emp(employee_id);
+
+select * from user_constraints where table_name in ('EMP','DEPT');
+select * from user_cons_columns where table_name in ('EMP','DEPT');
+
+create or replace procedure add_dept
+(p_name in varchar2, p_mgr in number, p_loc number)
+is
+	v_max number;
+begin
+	select max(department_id) into v_max from dept;
+	insert into dept(department_id, department_name, manager_id, location_id)
+	values(v_max+10,p_name,p_mgr,p_loc);
+
+end add_dept;
+/
+
+# 오류 발생 - 비정상적 종료,
+
+begin 
+	add_dept('경영지원',100,1800);
+	add_dept('데이터분석',99,1800); -- employee_id 99번 key가 없다. 프로시저에서 오류가 나면 exception으로 가는데 없고 
+					   그 다음은 프로그램으로 오게 되는데 프로그램에도 exception이 없으므로 오류가 난다. (자동 rollback)
+	add_dept('자금관리',101,1500);
+end; 
+/
+
+select * from dept;	
+
+ORA-02291: integrity constraint (HR.DEPT_MGR_ID_FK) violated - parent key not found
+ORA-06512: at "HR.ADD_DEPT", line 7
+ORA-06512: at line 3
+
+2.
+
+create or replace procedure add_dept
+(p_name in varchar2, p_mgr in number, p_loc number)
+is
+	v_max number;
+begin
+	select max(department_id) into v_max from dept;
+	insert into dept(department_id, department_name, manager_id, location_id)
+	values(v_max+10,p_name,p_mgr,p_loc);
+
+end add_dept;
+/
+
+begin 
+	add_dept('경영지원',100,1800); -- exception이 돌아가서 첫번째 값은 오류가 아니기 때문에 select 하면 들어간것을 확인 할 수 있다.
+	add_dept('데이터분석',99,1800); -- 여기서 오류이므로 exception 절로 간다. 
+	add_dept('자금관리',101,1500);
+
+exception
+	when others then
+		dbms_output.put_line(sqlerrm);
+end;
+/
+
+select * from dept;	
+
+ORA-02291: integrity constraint (HR.DEPT_MGR_ID_FK) violated - parent key not found
+
+PL/SQL procedure successfully completed.
+
+3.
+
+create or replace procedure add_dept
+(p_name in varchar2, p_mgr in number, p_loc number)
+is
+	v_max number;
+begin
+	select max(department_id) into v_max from dept;
+	insert into dept(department_id, department_name, manager_id, location_id)
+	values(v_max+10,p_name,p_mgr,p_loc);
+
+exception
+	when others then -- 여기 exception을 하기 때문에 첫번째 , 3번째는 오류값이 아니기에 값이 실행되고 , 2번째 값만 들어가지 않는다.
+		dbms_output.put_line('error : '||p_name);
+		dbms_output.put_line(sqlerrm);
+end add_dept;
+/
+
+
+begin 
+	add_dept('경영지원',100,1800); 
+	add_dept('데이터분석',99,1800);
+	add_dept('자금관리',101,1500);
+
+exception
+	when others then
+		dbms_output.put_line(sqlerrm);
+end;
+/
+
+select * from dept;
+
+error : 데이터분석
+ORA-02291: integrity constraint (HR.DEPT_MGR_ID_FK) violated - parent key not found
+
+PL/SQL procedure successfully completed.
+
+★★ exception 절은 프로시저절에서 써주는것이 가장 좋다. !
+
+# 프로시저 삭제
+
+drop procedure add_dept;
+
+# ★★ 프로시저를 사용하는 이유 : 매번 실행 할 필요 없음, 컴파일 최소화, 호출을 어디서든 가능하다.
+
+# 프로시저는 함수의 차이는 호출하는 행위로 해서 구분을 한다.
+
+# 함수 (function)
+
+create or replace function get_sal
+(p_id in number) -- # 선택이다. 입력값이 필요 없을 수 있으므로 예) sysdate, current_date 등
+return number -- #★★ return은 필수이다. 어떤 타입으로 return에서 나오는지 적는 것 (size는 적지 않는다) // 프로시저의 out 역할이다./ out은 사용할 수 있으나 필요가 없다.
+is
+	v_sal number := 0;
+begin
+	select salary into v_sal from employees where employee_id=p_id;
+	return v_sal; -- # return 값은 필수! 프로그램에 return을 많이 적을 수 있지만, 오직 한가지의 return 값만 밖으로 나간다.
+
+exception
+	when no_data_found then
+		return v_sal;
+end get_sal;
+/
+
+Function created.
+
+-- 호출하는 방법들 --
+
+exec dbms_output.put_line(get_sal(100)) -- 함수는 출력기능 값 안에서 실행이 가능하다. 
+
+declare
+	v_sal number;
+begin
+	v_sal := get_sal(100);
+	dbms_output.put_line(v_sal);
+end;
+/
+
+select employee_id, get_sal(employee_id) from employees; -- 표현식의 일부로 호출하는 방법
+
+# 프로시저와 함수가 헷갈린다면 ! sql 문장으로해서 사용하고 싶다면 함수만 가능하다. (pl/sql은 불가능하다.)
+
+# 하지만 안되는 경우가 있다.
+
+begin
+	get_sal(100);
+end;
+/
+PLS-00221: 'GET_SAL' is not a procedure or is undefined -- 프로시저만 가능하다고 오류가 뜬다.
+ORA-06550: line 2, column 2:
+PL/SQL: Statement ignored
+
+# 따로 행을 만드는게 아니라 이미 이름을 짓고 하는거기 때문에 그거 자체가 실행으로 된다.
+
+# 함수 삭제 : drop function 함수이름;
+
+# 함수에서 배열을 구성하는 것은 불가능해서 package로 해야한다.
+
+# 함수에서도 in 모드에선 default 설정이 가능하다.
+

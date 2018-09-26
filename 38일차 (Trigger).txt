@@ -1,0 +1,258 @@
+# trigger (트리거)
+
+- 이벤트(DML)성 프로그램
+- 어떤 이벤트가 발생하면 자동으로 실행되는 프로그램
+- CREATE TRIGGER 시스템 권한이 필요하다. -- select * from session_privs; 권한 확인
+
+drop table dept perge;
+
+create table dept sa select * from departments;
+
+desc dept
+
+insert into dept(department_id, department_name, manager_id, location_id) -- insert 조건으로 인해 오류가 실행 <트리거>
+values(300,null,100,1500); -- 자동 rollback 된다.
+
+rollback;
+
+<<문장트리거>> - 영향을 입은 row가 있던 없던 실행되는 트리거
+
+# before 문장 트리거 
+
+create or replace trigger dept_before
+before --타이밍, 시점
+insert on dept -- insert 테이블 수행하기 전에 실행하라는 의미
+begin
+	dbms_output.put_line('insert하기 전에 문장트리거수행');
+end;
+/
+
+# after 문장 트리거
+
+create or replace trigger dept_after
+after
+insert on dept -- insert 테이블 수행후에 실행하라는 의미
+begin
+	dbms_output.put_line('insert한 후에 문장트리거수행');
+end;
+/
+
+
+insert into dept(department_id, department_name, manager_id, location_id) -- insert 조건으로 인해 오류가 실행 <트리거>
+values(300,'it',100,1500);
+-- 메세지 발생
+insert하기 전에 문장트리거수행
+insert한 후에 문장트리거수행
+
+<<행 트리거>> - 영향을 받은 row만 있으면 수행되는 트리거, 복제테이블에도 사용할 때 사용한다.
+
+create or replace trigger dept_row_before
+before insert on dept
+for each row
+begin
+	dbms_output.put_line('insert하기 전에 행트리거수행');
+end;
+/
+
+
+create or replace trigger dept_row_after
+after insert on dept
+for each row
+begin
+	dbms_output.put_line('insert한 후에 행트리거수행');
+end;
+/
+
+insert into dept(department_id, department_name, manager_id, location_id)  
+values(300,'it',100,1500);
+
+            *
+ERROR at line 1:
+ORA-20000: insert 시간이 아닙니다.
+ORA-06512: at "HR.SECURE_DEPT", line 3
+ORA-04088: error during execution of trigger 'HR.SECURE_DEPT'
+
+create or replace trigger secure_dept
+before insert on dept
+begin
+	if to_char(sysdate,'hh24:mi') between '15:00' and '16:00' then
+		raise_application_error(-20000,'insert 시간이 아닙니다.');
+	end if;
+end;
+/
+--  비정상 종료다,
+
+insert into dept(department_id, department_name, manager_id, location_id)  
+values(400,'it',100,1500);
+
+SQL> insert into dept(department_id, department_name, manager_id, location_id)
+  2  values(400,'it',100,1500);
+insert하기 전에 문장트리거수행
+insert하기 전에 행트리거수행
+insert한 후에 행트리거수행
+insert한 후에 문장트리거수행
+
+            *
+ERROR at line 1:
+ORA-20000: insert 시간이 아닙니다.
+ORA-06512: at "HR.SECURE_DEPT", line 3
+ORA-04088: error during execution of trigger 'HR.SECURE_DEPT'
+
+-> 이 트리거는 insert문장을 수행하는 세션에서만 실행한다.
+
+
+# 트리거에서 is절은 필수 구절이 아니다.
+
+# 필수절은 timing, begin , end 절이다.
+
+create or replace trigger secure_dept
+before insert or update or delete on dept
+begin
+	if to_char(sysdate,'hh24:mi') between '14:00' and '15:00' then
+		raise_application_error(-20000,'insert 시간이 아닙니다.');
+	end if;
+end;
+/
+
+update dept
+set manager_id=100
+where department_id=20;
+
+      *
+RROR at line 1:
+RA-20000: insert 시간이 아닙니다.
+RA-06512: at "HR.SECURE_DEPT", line 3
+RA-04088: error during execution of trigger 'HR.SECURE_DEPT'
+
+# DML 모두 실행 
+
+create or replace trigger secure_dept
+before insert or update or delete on dept
+begin
+	if to_char(sysdate,'hh24:mi') between '14:00' and '15:00' then
+		if inserting then -- 조건부술어 (inserting, updating, deleting)  
+			raise_application_error(-20000,'insert 시간이 아닙니다.');
+		elsif updating then
+			raise_application_error(-20001,'update 시간이 아닙니다.');
+		elsif deleting then
+			raise_application_error(-20002,'delete 시간이 아닙니다.');
+		end if;
+  	end if;
+end;
+/
+
+create table copy_emp 
+as select employee_id, last_name, salary, department_id from employees;
+
+create or replace trigger copy_emp_trigger
+before delete or insert or update of salary on copy_emp -- update는 field절에 적용이 가능하기 때문에 특정 작업에서만 가능하게 하려고 of salary를 사용한 것이다.
+for each row -- 행트리거 설정 // 영향있는 row 값만 있을 때 실행
+when (new.department_id = 20 or old.department_id = 10) -- 행트리거의 조건 when : 행트리거에서만 가능하다. when절에는 수식자 앞에 : 을 쓰지않는다. begin절에선 꼭 써야한다.
+							   old.department_id - delete 시 new.department_id - insert 시 트리거에 걸린다. update는 둘다 걸린다.
+declare
+	v_sal number;
+begin
+	if deleting then -- delete는 삭제하므로 delete에서 사용할 값은 old 값 밖에 없다. 삭제하기 전의 값
+		dbms_output.put_line('old salary : '|| :old.salary);
+	elsif inserting then -- 새로운 값만 들어오므로 new라는 수식자를 사용한다.
+		dbms_output.put_line('new salary : '|| :new.salary);
+	else
+		v_sal := :new.salary-:old.salary;
+		dbms_output.put_line('사원번호 : '|| :new.employee_id||' 사원이름 : '|| :old.last_name||' 이전 급여 : '||:old.salary||' 수정된급여 : '||:new.salary||' 급여차이 : '||v_sal);
+	end if;					     --old.employee_id 로 해도 상관이 없다. 왜냐하면 그전에 있던 값으로 그대로 하는 거기 때문에 new이던 old이던 상관이 없다.
+end;
+/
+
+#old: 이전의 값 , new: 새로운 값을 의미
+-- 업데이트는 new old 모두 가능하다.
+
+select * from copy_emp where department_id = 10;
+
+
+EMPLOYEE_ID LAST_NAME                                              SALARY DEPARTMENT_ID
+----------- -------------------------------------------------- ---------- -------------
+        200 Whalen                                                   4400            10
+
+select * from copy_emp where department_id = 20;
+
+
+EMPLOYEE_ID LAST_NAME                                              SALARY DEPARTMENT_ID
+----------- -------------------------------------------------- ---------- -------------
+        201 Hartstein                                               14300            20
+        202 Fay                                                      6600            20
+
+# old : delete 관련 값
+
+delete from copy_emp where employee_id=200;
+
+old salary : 4400
+
+1 row deleted.
+
+
+SQL> delete from copy_emp where employee_id=201; -- 아무것도 일어나지 않는다.
+
+1 row deleted.
+
+delete from copy_emp where department_id=10;
+
+old salary : 4400
+
+1 row deleted.
+
+insert into copy_emp(employee_id,last_name,salary,department_id)
+values(300,'hong',1000,20);
+
+new salary : 1000
+
+1 row created.
+
+insert into copy_emp(employee_id,last_name,salary,department_id)
+values(300,'hong',1000,10); -- 트리거 x
+
+update copy_emp
+set salary = salary * 1.1
+where employee_id = 200;
+
+사원번호 : 200이전 급여 : 4400수정된급여 : 4840급여차이 : 440
+
+1 row updated.
+
+update copy_emp
+set salary=salary*1.1
+where employee_id=100;
+
+1 row updated. -- 트리거 x (10번부서 20번부서 값이 아니므로 발생 x)
+
+update copy_emp
+set salary=salary*1.1
+where employee_id = 201;
+
+사원번호 : 201이전 급여 : 14300수정된급여 : 15730급여차이 : 1430
+
+1 row updated.
+
+create or replace trigger copy_emp_trigger
+before delete or insert or update on copy_emp 
+for each row 
+when (new.department_id = 20 or old.department_id = 10) 
+
+declare
+	v_sal number;
+begin
+	if deleting then -- delete는 삭제하므로 delete에서 사용할 값은 old 값 밖에 없다. 삭제하기 전의 값
+		dbms_output.put_line('old salary : '|| :old.salary);
+	elsif inserting then -- 새로운 값만 들어오므로 new라는 수식자를+ 사용한다.
+		dbms_output.put_line('new salary : '|| :new.salary);
+	elsif
+		updating('salary') then -- 컬럼별로 트리거를 수행하고 싶다면 컬럼을 지정해서 사용해도된다.
+		v_sal := :new.salary-:old.salary;
+		dbms_output.put_line('사원번호 : '|| :new.employee_id||' 사원이름 : '|| :old.last_name||' 이전 급여 : '||:old.salary||' 수정된급여 : '||:new.salary||' 급여차이 : '||v_sal);
+	end if;					    
+end;
+/
+
+select * from user_triggers where table_name='COPY_EMP'; -- 트리거 확인
+
+
+

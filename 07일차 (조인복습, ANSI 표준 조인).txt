@@ -1,0 +1,127 @@
+1. equi join/ 2. outer join
+select e.last_name,e.department_id,d.department_id,d.department_name,d.location_id,l.location_id,l.city
+from employees e, departments d, locations l
+where e.department_id=d.department_id(+)
+and d.location_id=l.location_id(+)
+order by 2,3;
+
+★ 전체 건수 검정을 해야 JOIN속성을 썼을 때 해결이 가능하다. (1족집합 m족집합을 파악하는것도 중요하다.)
+
+- 테이블의 구조를 본다. 컬럼 구조 desc, 데이터는 select로 본다. 
+- 테이블을 눌러서 데이터를 보거나 제약조건 등을 봐서 해결할 수도 있다.
+
+3. non equi join
+
+select e.last_name,e.salary,j.grade_level
+from employees e, job_grades j
+where e.salary between j.lowest_sal and j.highest_sal;
+
+- 기준이 있어야 가능하다.
+
+4. self join / outer join
+
+select e.employee_id,e.last_name,d.employee_id,d.last_name
+from employees e, employees d
+where e.manager_id=d.employee_id(+);
+
+- 자기자신의 참조하더라도 테이블 명은 나와야 한다.
+- outer join ORACLE 전용이다.
+
+책 - 상상하지말라. 대청출판사, 시그마출판사
+
+ANSI(American National Standards Institute) 표준언어 인 SQL(Structured Query Language) 문을 실행하여 액세스하고 수정 할 수 있다.
+
+# cartesian product
+
+select last_name,department_name
+from employees,departments;
+
+ANSI 표준
+
+# cross join - cartesian 곱을 발생시키는 ANSI 표준 join
+
+select last_name,department_name
+from employees cross join departments;
+
+# 조인 할 시 동일한 테이블 속성이 있는지를 찾아본다.
+
+select e.last_name,d.department_name
+from employees e,departments d
+where e.department_id=d.department_id;
+
+1. natural join - equi join 을 해주는 ANSI 표준 join, 조금 다른데 두 테이블에서 이름이 같은 모든컬럼을 기반으로 조인한다.
+	       - 동일한 이름을 가진 컬럼이 서로 다른 데이터 타입을 가지면 오류가 난다.
+
+select last_name,department_name
+from employees natural join departments; -> 의미 where e.department_id = d.department_id and e.manager_id = d.manager_id;
+
+select department_name,city
+from departments natural join locations; -> 그래서 하나만 같은 속성이 있는 것이 좋다.
+
+2. join using 절을 사용하는 조인 -> using 절에 사용된 컬럼은 절대로 별칭을 쓰면 안된다.(using 절 안에도 쓰면 안된다.)
+
+select last_name, department_id, department_name 
+from employees join departments
+using (department_id);
+
+select e.last_name, department_id, d.department_name 
+from employees e join departments d
+using (department_id);
+
+쓰기 불편함
+예) select e.last_name, department_id, d.department_name 
+from employees e join departments d
+using (department_id)
+where department_id in (20,30); -> 여기도 별칭 쓰는 것은 불가하다.
+
+3. join on 절 사용하는 조인 -> on 절을 기준으로 join을 한 것이다. 그안에 where을 쓰면 오류가 뜬다. (ANSI 에선 where 에서 join 조건 불가, 오로지 행 제어만 가능)
+
+select e.last_name,d.department_name
+from employees e join departments d
+on e.department_id = d.department_id;
+
+
+select e.last_name,d.department_name,l.city -> from 절에 join 을 했다면 또 다른 값을 join 하려면 밑에 join을 쓰고 on 해서 해결을 한다.
+from employees e join departments d
+on e.department_id = d.department_id
+join locations l
+on d.location_id=l.location_id
+where e.department_id in (10,20); -> 여기서 where은 행제어만 가능! 즉 비조인조건술어만 가능하다.
+
+select w.last_name, w.department_id,m.last_name ,m.department_id 
+from employees w join employees m
+on w.department_id = m.manager_id;
+
+select e.last_name,e.salary,j.grade_level
+from employees e join job_grades j
+on e.salary between j.lowest_sal and j.highest_sal;
+
+select e.last_name,e.salary,j.grade_level
+from employees e join job_grades j
+on e.salary between j.lowest_sal and j.highest_sal
+where e.department_id=30
+and e.salary>=3000;   -> 아래에 where 조건절을 쓰면 된다.
+
+4. left outer join, right outer join, full outer join -> oracle outer 와 달리 해당하는 값에 따라 위치를 정해서 join을 적으면 된다.
+
+select e.last_name,d.department_name
+from employees e left outer join departments d
+on e.department_id = d.department_id;
+
+select e.last_name,d.department_name
+from employees e right outer join departments d
+on e.department_id = d.department_id;
+
+select e.last_name,d.department_name -> oracle 에서 union 에서 할 시 쿼리문장을 2번 하기 때문에 좋지 않다. 그래서 full이 더 좋다.
+from employees e full outer join departments d
+on e.department_id = d.department_id;
+
+select e.last_name,d.department_name,l.city   -> 2개 초과 해서 outer join 을 하려면 밑에 join 에도 left outer join 으로 해서 사용해야한다.
+from employees e left outer join departments d
+on e.department_id = d.department_id
+left outer join locations l
+on d.location_id=l.location_id;
+
+
+
+

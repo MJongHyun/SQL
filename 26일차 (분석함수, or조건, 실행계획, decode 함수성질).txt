@@ -1,0 +1,227 @@
+
+# 분석함수는 단일 행 함수 처럼 사용하는 기능이다.
+
+# 분석함수 OLAP
+
+over(order by 열) : row 단위로 값을 출력 하는 값
+over() : row열 모두 합한 값 출력
+
+예) [문제130] 20번 부서 사원들의 급여의 누적 합계를 아래와 같이 출력하세요.
+
+select e.employee_id,e.salary,e.department_id,sum(t.salary) as total
+from employees e, employees t
+where e.department_id=20 
+and t.department_id=20
+and e.employee_id>=t.employee_id
+group by e.employee_id,e.salary,e.department_id
+order by 1;
+
+실행계획
+
+select * from table (dbms_xplan.display_cursor(null,null,'allstats last'));
+
+select employee_id, salary, department_id, sum(salary) over (order by employee_id) as total --employee_id로 정렬해서 합한 값들
+from employees
+where department_id = 20;
+
+select employee_id salary, department_id, sum(salary) over () as total -- 전체합
+from employees
+where department_id= 20;
+
+select employee_id salary, department_id, avg(salary) over () as total -- 전체평균
+from employees
+where department_id= 20;
+
+# partition by 열값 : 열값 별로 총합을 구하겠다 (누적합은 아니다.)
+
+select employee_id salary, department_id, sum(salary) over (partition by department_id) as total
+from employees
+where department_id= 20;
+
+select employee_id salary, department_id,
+	 sum(salary) over (partition by department_id) as dept_total, -- 부서별 사원 총 급여
+	 sum(salary) over (partition by department_id order by employee_id) -- 부서별로 각각 사원의 급여를 누적한 값
+from employees;
+
+
+Plan hash value: 1919783947
+
+---------------------------------------------------------------------------------------------------------------------
+| Id  | Operation          | Name      | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+---------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |           |      1 |        |    107 |00:00:00.01 |       6 |       |    |     |
+|   1 |  WINDOW SORT       |           |      1 |    107 |    107 |00:00:00.01 |       6 | 15360 | 15360 |14336  (0)| -- 분석함수 사용 의미
+|   2 |   TABLE ACCESS FULL| EMPLOYEES |      1 |    107 |    107 |00:00:00.01 |       6 |       |    |     |
+---------------------------------------------------------------------------------------------------------------------
+
+
+16 rows selected.
+
+# top-n 분석
+
+rank() over (order by) - 중복 순위가 있다면 다음 순위로 가는 값
+dense_rank() over (order by) - 중복순위에 상관없이 계속 수가 이어지는 순위 값 
+
+select employee_id, salary, rank() over(order by salary desc),
+	dense_rank() over(order by salary desc)
+from employees;
+
+
+2등까지 뽑기
+
+select rank, last_name, salary 
+from(select last_name, salary, dense_rank() over(order by salary desc) as rank -- 등수를 만드는 inline view 만들어서 생성한다. 
+	from employees)
+where rank<=2;
+
+# 옵션
+# rows between unbounded preceding and current row : 정렬결과 처음부터 현재행까지를 대상 
+   rows between unbounded preceding and unbounded following : 정렬결과 처음과 끝을 대상
+
+select employee_id, salary,
+sum(salary) over(order by employee_id rows between unbounded preceding and current row),
+sum(salary) over(order by employee_id),
+sum(salary) over(order by employee_id 
+			rows between unbounded preceding and unbounded following)
+,sum(salary) over()
+from employees;
+
+-- 정렬된 처음 급여와 마지막 급여 추출
+
+select department_id, salary, 
+first_value(salary) over (partition by department_id order by salary rows between unbounded preceding and unbounded following) - 부서별 최소 급여
+first_value,
+last_value(salary) over (partition by department_id order by salary rows between unbounded preceding and unbounded following) - 부서별 최대 급여 
+last_value
+from employees;
+
+[문제134] SQL문 실행 계획을 확인 한 후 튜닝하세요.
+
+# OR 조건은 따로따로 접근을 한 것인지 아니면 하나로 묶어서 할 건지를 결정해서 해야한다.
+
+select *
+from employees
+where job_id = 'IT_PROG'
+or department_id = 20;
+
+select job_id, count(*) from employees group by job_id; -- 각각 값의 분포도 확인 ★★★ 가장 중요
+
+select department_id, count(*) from employees group by department_id;
+
+select * from user_ind_columns where table_name='EMPLOYEES';
+
+INDEX_NAME          TABLE_NAME    COLUMN_NAME COLUMN_POSITION COLUMN_LENGTH CHAR_LENGTH DESCEND
+--------------- ------------- ----------- --------
+EMP_EMAIL_UK	EMPLOYEES	EMAIL	1	25	25	ASC
+EMP_EMP_ID_PK	EMPLOYEES	EMPLOYEE_ID	1	22	0	ASC
+EMP_DEPARTMENT_IX	EMPLOYEES	DEPARTMENT_ID	1	22	0	ASC
+EMP_JOB_IX	EMPLOYEES	JOB_ID	1	10	10	ASC
+EMP_MANAGER_IX	EMPLOYEES	MANAGER_ID	1	22	0	ASC
+EMP_NAME_IX	EMPLOYEES	LAST_NAME	1	25	25	ASC
+EMP_NAME_IX	EMPLOYEES	FIRST_NAME	2	20	20	ASC
+EMP_SAL_IDX	EMPLOYEES	SALARY	1	22	0	ASC
+
+# 실행연산자를 분리해서 실행하고 싶다면 집합연산자를 사용한다.
+
+select * from employees where job_id = 'IT_PROG'
+union all
+select * from employees where department_id = 20;
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 2554850805
+
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                   |      1 |        |      7 |00:00:00.01 |    6 |
+|   1 |  UNION-ALL                   |                   |      1 |        |      7 |00:00:00.01 |    6 |
+|   2 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |      1 |      5 |      5 |00:00:00.01 |    4 |
+|*  3 |    INDEX RANGE SCAN          | EMP_JOB_IX        |      1 |      5 |      5 |00:00:00.01 |    2 |
+|   4 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |      1 |      2 |      2 |00:00:00.01 |    2 |
+|*  5 |    INDEX RANGE SCAN          | EMP_DEPARTMENT_IX |      1 |      2 |      2 |00:00:00.01 |    1 |
+------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("JOB_ID"='IT_PROG')
+   5 - access("DEPARTMENT_ID"=20)
+
+ use_concat: optimizer가 실행을 따로따로 실행하기 위해서 사용 즉, 실행연산자를 분리해서 실행하고자 할 때 사용 
+
+select /*+ use_concat */ *
+from employees
+where job_id = 'IT_PROG'
+or department_id = 20;
+
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                   |      1 |        |      7 |00:00:00.01 |    6 |
+|   1 |  CONCATENATION               |                   |      1 |        |      7 |00:00:00.01 |    6 | -- 실행 계획 분리 
+|   2 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |      1 |      2 |      2 |00:00:00.01 |    4 |
+|*  3 |    INDEX RANGE SCAN          | EMP_DEPARTMENT_IX |      1 |      2 |      2 |00:00:00.01 |    2 |
+|*  4 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |      1 |      5 |      5 |00:00:00.01 |    2 |
+|*  5 |    INDEX RANGE SCAN          | EMP_JOB_IX        |      1 |      5 |      5 |00:00:00.01 |    1 |
+------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("DEPARTMENT_ID"=20)
+   4 - filter(LNNVL("DEPARTMENT_ID"=20)) 
+   5 - access("JOB_ID"='IT_PROG')
+
+
+# use_concat 을 사용한 결과와 같다. (실행 계획을 분리해 주는 힌트)
+
+select * from employees where department_id = 20 
+union all
+select * from employees where job_id = 'IT_PROG' and lnnvl(department_id=20);
+
+
+---lnnvl(department_id = 20) => department_id <> 20 or department_id is null 
+
+Plan hash value: 3315974972
+
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                   |      1 |        |      7 |00:00:00.01 |    6 |
+|   1 |  UNION-ALL                   |                   |      1 |        |      7 |00:00:00.01 |    6 |
+|   2 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |      1 |      2 |      2 |00:00:00.01 |    4 |
+|*  3 |    INDEX RANGE SCAN          | EMP_DEPARTMENT_IX |      1 |      2 |      2 |00:00:00.01 |    2 |
+|*  4 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |      1 |      5 |      5 |00:00:00.01 |    2 |
+|*  5 |    INDEX RANGE SCAN          | EMP_JOB_IX        |      1 |      5 |      5 |00:00:00.01 |    1 |
+------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("DEPARTMENT_ID"=20)
+   4 - filter(LNNVL("DEPARTMENT_ID"=20))
+   5 - access("JOB_ID"='IT_PROG')
+
+★ or 에서 concat을 사용하지 않으면 한번에 묶어서 사용하는 것이다. 
+☆ concat은 2개이상이면 모두 다 각각 따로 실행을 한다.
+
+
+# no_expand ( 실행계획을 하나로 해서 실행해주는 힌트)
+
+
+[문제135] job_id가 AD_PRES를 제외한 사원중에 가장 큰 급여값을 찾아주세요. 단 decode함수를 이용하세요.
+
+select job_id, max(salary) from employees group by job_id order by 2 desc;  -- 분포도 확인
+
+select max(decode(job_id,'AD_PRES',null,salary))
+from employees;
+
+# decode 함수는 3번째 값이 4번째 값의 영향을 준다. null은 character 형이기 때문에 4번째 값도 character 값으로 바뀌게 된다
+  따라서 검색시 9600(문자형에서 숫자가 가장 큰 값이 9 이므로 ) 을 가장 큰 값으로 인식을 하게 된다.
+
+select max(decode(job_id,'AD_PRES',to_number(null),salary))
+from employees;
+
+select max(case when job_id='AD_PRES' then null else salary end) -- case는 그대로 나온다.
+from employees;

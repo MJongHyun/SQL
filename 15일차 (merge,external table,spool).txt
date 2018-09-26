@@ -1,0 +1,149 @@
+# Merge : 소스테이블에서 타겟테이블(분석테이블) 값을 옮기려 할때(이행작업을 할때) 없는 값은 insert 해주고 갱신해야 될 값은 update 하고 조건을 통해 delete 해주는 함수.
+            -- 이런 값을 분석 할 땐 갱신이 되지 않는 시간이거나 전날꺼 데이터를 통해 분석을 한다.
+            -- DML 문장이 돌아 간거 라서 트랜잭션이 발생하므로 값을 확인후 commit/rollback을 해줘야 한다.
+hr 계정에서 수행
+
+create table oltp_emp -- 운영테이블 (수정되는 테이블)
+as
+select employee_id,last_name,salary,department_id
+from employees;
+
+create table dw_emp -- 데이터 분석 테이블
+as
+select employee_id, last_name, salary, department_id
+from employees
+where department_id=20;
+
+alter table oltp_emp add flag char(1); -- 컬럼추가
+
+update oltp_emp ----샘플데이터 변경 (데이터분석 테이블의 값 변경)
+set flag='d'
+where employee_id=202;
+
+update oltp_emp 
+set salary=20000
+where employee_id=201;
+
+commit; 
+
+merge into dw_emp d -- 타겟테이블 (update/delete/insert 되는 값)
+using oltp_emp o -- 소스테이블 (using 절)
+on (d.employee_id=o.employee_id) -- join 값  
+when matched then -- 키값이 일치가 되면(키워드) 
+         update set 
+	d.last_name=o.last_name, -- update 할 값들을 정렬한다. 즉, 타겟테이블의 값을 소스테이터 값을 통해 수정한다. 조건마다 , 반드시 써준다.
+	d.salary=o.salary*1.1,
+	d.department_id=o.department_id
+         delete where o.flag='d' ---delete만 where 절을 만드는 것이 가능하다. (delete는 10g 버젼부터 나온 값)
+when not matched then 
+         insert(d.employee_id,d.last_name,d.salary,d.department_id) --- insert 에선 into를 쓰지않고 변형되서 쓴다.
+         values(o.employee_id,o.last_name,o.salary,o.department_id);
+
+select * from dw_emp where employee_id in(201,202); --- 값이 적용되서 하나가 없어짐,기존급여를 갱신하여  다른 값이 적용되어 있다.
+select * from oltp_emp where employee_id in(201,202); -- 기존값
+
+merge into 타겟테이블
+using 소스테이블
+on (join값 부여)
+when matched then -- update,delete절 (값이 일치할 때 )
+	update set
+		업데이트조건
+	delete where 삭제조건
+when not matched then -- insert절 (값이 일치하지 않을 때, 즉, 타겟테이블에 소스테이블값이 없을 때)
+	insert(타겟데이터 열값) --타겟과 소스값은 같게 진행한다.
+ 	values(소스데이터 열값);
+
+# 도구 -> 익스포트 -> 접속 hr ->데이터만 받기 (DDL도 받을수 있음)-> 형식 (csv) <,(콤마)로 구분되어있는 데이터> -> 헤더 제거 -> 기본값,없음->c드라이브 폴더 저장->ms949(한국어)
+->모두토글 해제한 후 테이블만 체크->조회누른 후 테이블 내림-> 열 선택(조건도 가능)-> 완료
+
+# external table 
+
+1. DBA 접속--논리적인 디렉토리 생성 및 사용자에게 read,write를 부여
+create directory data_dir as 'c:\data\'; 
+create directory 디렉토리이름 as '물리적위치'; -- 데이터 이름 사용
+grant read,write on directory 디렉토리이름 to hr; -- 권한부여
+
+확인방법
+drop directory date_dir;
+create directory data_dir as 'c:\data\'; -- 생성
+select * from dba_directories;  -- 확인
+grant read,write on directory data_dir to hr;
+revoke read,write on directory data_dir from hr;
+
+2.hr 접속
+
+create table empxt -- 환경구성
+(id number,name varchar2(30),hire_date date,sal number, dept_id number)
+organization external 
+(
+type oracle_loader -- access 드라이브 타입
+default directory data_dir
+access parameters
+(
+records delimited by newline -- 한행 씩 읽어들임
+badfile 'empxt.bad' -- 문제가 생기는 것은 badfile로 이동
+logfile 'empxt.log' -- 문제가 없다면 이곳으로 이동.
+fields terminated by ',' -- csv파일은 ,(콤마)로 나눠져 있으므로 나누는 기준 값을 넣는다.
+missing field values are null -- 필드 값들이 각각 맞지 않으면 null로 표현
+(id,name,hire_date char date_format date mask "yyyy-mm-dd",sal,dept_id)
+)
+location('emp1.csv')
+)
+reject limit unlimited;
+--------------------------------------------------------------------------
+create table 테이블이름(환경이름)
+(요소들)
+organization external
+(
+type oracle_loader
+default directory 디렉토리이름(불러올값)
+access parameters
+(
+records delimited by newline
+badfile 'empxt.bad'
+logfile 'empxt.log'
+fields terminated by ',' 
+missing field values are null 
+(불러올 값들 날짜는 유형에 맞게 format해서 넣는다.) -- char date_format date mast "     "
+location('파일이름.파일종류') -- 값이 같은 값들이 있다면 location에 위치를 추가시켜서 값을 부르는 것도 가능하다.
+)
+reject limit unlimited;
+
+select * from user_external_tables; -- 테이블 뷰 
+select * from all_directories; -- 디렉토리 사용확인 방법,DBA에서만 확인
+select * from user_external_locations; -- 위치 확인
+
+# external 단점 : 읽기만 가능하다, 수정은 불가능 하다.
+# external 로 만든 것은 기능은 다 가능하지만 dbms 파일은 아니다.
+# 만약 dbms로 만들고 싶다면 ctas를 하면 된다.
+
+create table empxt_copy as select * from empxt;
+
+
+# 스풀 (spool) : sql developer 가 없을 때 sql plus 에서 사용
+set pagesize 0
+set linesize 200
+set echo off
+set termout off
+set trimspool on
+set feedback off
+spool c:\data\emp_sal.dat
+select employee_id ||','|| last_name || ',' || hire_date || ',' || salary || ',' || department_id
+from employees
+order by 1;
+spool off
+
+저장 : emp.sql 파일확장명 : 모든파일로 저장
+
+sql 플러스 접속 -> conn hr/hr -> @c:\data\emp.sql
+
+set pagesize -- 컬럼이름 크기조절
+set linesize -- 좌우 길이를 조절하는 값
+set echo off -- sql 문을 출력하지 않는 것 , on 하면 sql문장이 들어간다.
+set termout off -- 화면에 결과물이 나오지 않도록 함
+set trimspool on -- 라인뒤에 공백줄을 만들지 않도록 하는 값
+set feedback off  -- 메세지를 출력하지 않겠다 라는 의미
+
+파일을 반드시 .sql (스크립트형식으로 해서 값을 만든다.) @c:\data\emp.sql 
+
+---- 실행은 반드시 sql 플러스에서만 가능하다.

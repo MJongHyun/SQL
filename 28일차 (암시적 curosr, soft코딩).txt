@@ -1,0 +1,522 @@
+변수 - 어떤 값을 임시로 저장한 후 재사용 목적으로 변수를 선언해서 사용한다.
+
+scalar data type 변수 사용 : 단일값을 보유하는 변수
+
+익명블록 - oracle DB에 저장되지 않는 구조를 의미한다. -> shared pool에 저장되있다.
+단점 : 매번 수행할 때마다 complie을 발생 , reparsing을 항상 해야한다. 
+          DB object 단위가 아니기 때문에 다른사람들과 공유해서 사용할 수가 없다 .  
+ORACLE DML,SELECT OBJECT 권한만 있다면 사용 가능하다.
+ 
+CREATE TRIGGER - 제약조건이 짜여있는 값 (이벤트성 프로그램) 
+		보안유지 - logfile
+
+declare 
+
+	변수선언;
+	명시적 커서 선언;
+	사용자가 정의한 예외사항 선언;
+
+begin
+
+	로직구현;
+	select;
+	dml;
+	commit, rollback, savepoint;
+	
+	
+exception
+
+	실행부분에서 발생한 오류 처리하는 부분;
+	
+end;
+/
+
+select * from user_sys_privs order by privilege;
+select * from session_privs; 
+
+
+CREATE PROCEDURE - 프로시저 package 시스템 권한 / DBA 
+변수 선언시 주의해야 할 점
+not null, constant 무조건 초기 값 할당
+할당연산자 :=, default
+변수는 문자로 시작을 해야한다. (문자, 숫자, 특수문자(_, #, $))
+30자리까지만 가능하다.
+예약어는 사용할 수 없다.
+
+v_a, v_b number(1); -- 오류, 한줄엔 하나씩만 가능하다.
+v_a number(1)
+v_b number(2) 
+변수범위
+
+local, private, 지역 -- 프로그램 안에서만 사용하는 함수
+global, 전역, public 
+
+bind(host) variable - 프로그램 밖에서 선언
+
+var b_id number -- number 사이즈 명시 X
+var b_name varvhar2(20) -- 문자 사이즈 반드시 명시
+
+exec :b_id := 1000
+exec :b_name := 'King'
+
+begin
+	:b_id := 100;
+end;
+/
+
+-- exec ::= 를 통해 값을 넣거나 begin안에서 :b_id:= 하는값은 같다.
+
+print b_id
+
+bind - session 종속, tool에 종속 (종료하면 끝)
+
+해결 : package;
+
+<<outer>> 
+declare 
+	v_name varchar2(20) := '홍길동';
+	v_date date := to_date('2018-01-01','yyyy-mm-dd');
+begin
+	dbms_output.put_line('학생이름은 ' || v_name);
+	dbms_output.put_line('학생 수강한 날짜는 ' || to_char(v_date,'yyyymmdd'));
+	
+	declare
+		v_name varchar2(20) :=  '박찬호';
+		v_date date := to_date('2017-01-10','yyyy-mm-dd');
+	
+	begin
+		v_name := '손흥민';
+		dbms_output.put_line('학생이름은 ' || v_name);
+		dbms_output.put_line('학생 수강한 날짜는 ' || to_char(v_date,'yyyymmdd'));
+		dbms_output.put_line('학생이름은 ' || outer.v_name);
+		dbms_output.put_line('학생 수강한 날짜는 ' || to_char(outer.v_date,'yyyymmdd'));
+
+	end;
+	
+	dbms_output.put_line('학생이름은 ' || v_name);
+	dbms_output.put_line('학생 수강한 날짜는 ' || to_char(v_date,'yyyymmdd'));
+
+
+end;
+/
+  
+# 레이블을 사용하는 이유 : 서브블락과 메인블락의 값이 같을 때 사용한다.
+
+  
+declare 
+	v_name2 varchar2(20);
+	v_date2 date := to_date('2017-01-10', 'yyyy-mm-dd');
+begin
+	v_name2 := upper('james') -- 프로시저문 
+	dbms_output.put_line('학생 이름은 '  || v_name2);
+	dbms_output.put_line('수강한 날짜는 ' || to_char(v_date2,'yyyymmdd'));
+
+end;
+/
+
+프로시저에서 사용할 수 없는 함수
+- decode
+- avg, sum, max, min, count, stddev, variance
+
+예) v_flag := decode(...)
+     v_ max := max(v_sal) -- 불가하다.
+
+# 단, begin 안에서 select 문장을 사용할 시에는 가능하다.
+
+
+# 오류가 생긴다.
+
+begin 
+	select last_name
+	from employees
+	where employee_id = 100;
+
+end;
+/
+
+# 오류가 난 이유 : select한 결과 값을 어디가 출력 할지를 결정 하지 않았기 때문에 오류가 발생한다. -- 변수에 load를 시켜야한다. (변수선언을 해야한다.)
+
+# 암시적 커서 : dml(insert, update, delete, merge) -- dml은 몇개가 나와도 상관이 없다.
+★ 필수조건 : select... into... ★★(반드시 1개 row만 fetch 를 해야한다.)
+	    0개: no_data_found
+	    1개초과 : too_many_rows => 해결방법: 명시적커서를 사용
+declare
+	v_lname varchar2(20);
+	v_fname varchar2(20);
+	v_sal number;
+
+begin 
+	select last_name , first_name, salary
+	into v_lname, v_fname, v_sal
+	from employees
+	where employee_id = 100;
+	dbms_output.put_line(v_lname||' '||v_fname||' '||v_sal);
+
+end;
+/
+
+into - fetch 절이다. select절에 무조건 into가 필수이다. select 컬럼의 갯수만큼 declare에 선언을 해줘야한다. (fetch를 해야할 공간이 없기 때문에 생성을 해야한다.)
+          항상 select 절과 declare 값은 대응해서 값을 만들어야 한다.
+
+-- employee_id = 300 인 경우 : 없는 값을 한 경우 no data found 값이 나온다.
+
+declare
+	v_lname varchar2(20);
+	v_fname varchar2(20);
+	v_sal number;
+
+begin 
+	select last_name , first_name, salary
+	into v_lname, v_fname, v_sal
+	from employees
+	where employee_id = 300;
+	dbms_output.put_line(v_lname||' '||v_fname||' '||v_sal);
+
+end;
+/
+
+-- 암시적 커서 사용 시 select 문장의 type들을 알고 declare을 해줘야 가능하다. (하드코딩 방식)
+     단점 : 사이즈나 type을 변형 하였을 때 (modify) , 모두다 바꿔줘야 한다. (유지보수가 불편하다.)
+     그래서 사용 하는 경우는 type이나 size가 절대로 변하지 않는 곳에 사용한다.
+
+declare
+	v_lname varchar2(20);
+	v_fname varchar2(20);
+	v_sal number;
+
+begin 
+	select last_name , first_name, salary
+	into v_lname, v_fname, v_sal
+	from employees
+	where department_id = 10; -- 오류가 나지 않은 이유 : 10번 부서의 값은 하나밖에 존재 하지 않아서 오류가 나지 않는다. 20번인 경우 오류 발생 
+	dbms_output.put_line(v_lname||' '||v_fname||' '||v_sal);
+
+end;
+/
+
+# soft 코딩방식 - 유연하게 type 변형을 사용할 수 있는 코딩방법. 
+
+declare
+	v_lname		employees.last_name%type; 
+	v_fname		v_lname%type;
+	v_sal		employees.salary%type;
+
+begin 
+	select last_name , first_name, salary
+	into v_lname, v_fname, v_sal
+	from employees
+	where employee_id = 100;
+	dbms_output.put_line(v_lname||' '||v_fname||' '||v_sal);
+
+end;
+/
+
+테이블이름.테이블컬럼%type; - 테이블 컬럼에 맞는 type를 사용하겠다.
+변수이름.테이블컬럼%type; 도 가능하다.
+
+
+-- 다시 컴파일 해야한다. 이유 : employee_id 값이 달라 졌기 때문에 <해결> 변수값으로 만든다.
+
+declare
+	v_lname		employees.last_name%type; 
+	v_fname		v_lname%type;
+	v_sal		employees.salary%type;
+
+begin 
+	select last_name , first_name, salary
+	into v_lname, v_fname, v_sal
+	from employees
+	where employee_id = 101;
+	dbms_output.put_line(v_lname||' '||v_fname||' '||v_sal);
+
+end;
+/
+
+변수처리하는 방법 : bind 변수 이용
+
+var b_id number
+exec :b_id:= 100;
+
+declare
+	v_lname		employees.last_name%type; 
+	v_fname		v_lname%type;
+	v_sal		employees.salary%type;
+
+begin 
+	select last_name , first_name, salary
+	into v_lname, v_fname, v_sal
+	from employees
+	where employee_id = :b_id;
+	dbms_output.put_line(v_lname||' '||v_fname||' '||v_sal);
+
+end;
+/
+
+exec :b_id:= 101 -- 새로운 값 입력 
+
+declare
+	v_lname		employees.last_name%type; 
+	v_fname		v_lname%type;
+	v_sal		employees.salary%type;
+
+begin 
+	select last_name , first_name, salary
+	into v_lname, v_fname, v_sal
+	from employees
+	where employee_id = :b_id;
+	dbms_output.put_line(v_lname||' '||v_fname||' '||v_sal);
+
+end;
+/
+
+drop table test purge;
+
+create table test(id number, name varchar2(20), day date);
+
+desc test;
+
+insert into test(id,name,day)
+values(1,'홍길동',to_date('2018-01-01','yyyy-mm-dd')); -- excute 까지만 실행 (1row)
+
+select * from test;
+rollback;
+
+begin
+	insert into test(id, name, day)
+	values(1,'홍길동',to_date('2018-01-01','yyyy-mm-dd')); -- 프로그램안에서 DML이 수행할시 얼마나 들어갔는지는 알수가 없다.
+end;
+/
+
+# 프로그램안에서 DML을 실행시 프로그램을 끝나도 트랜잭션이 끝나지 않았기 때문에 commit 또는 rollback을 해야한다.
+   그리고 안에서 commit을 해야할지 밖에서 해야할지를 결정 해야한다. - 하지않으면 rock이 걸린다.
+
+
+ VAR[IABLE] [ <variable> [ NUMBER | CHAR | CHAR (n [CHAR|BYTE]) | -- 바인드 안에서는 date값을 쓸수가 없다.
+              VARCHAR2 (n [CHAR|BYTE]) | NCHAR | NCHAR (n) |
+              NVARCHAR2 (n) | CLOB | NCLOB | BLOB | BFILE
+              REFCURSOR | BINARY_FLOAT | BINARY_DOUBLE ] ]
+
+var b_id number
+var b_name varchar2(20)
+var b_day varchar2(20)
+
+exec :b_id:=1
+exec :b_name:='홍길동'
+exec :b_day:='20180101'
+
+print b_id b_name b_day -- bind 값 확인
+
+begin
+	insert into test(id, name, day)
+	values(:b_id,:b_name,to_date(:b_day,'yyyymmdd'));
+
+end;
+/
+
+exec :b_id:=2
+exec :b_name:='문종현'
+exec :b_day:='20170101'
+
+begin
+	insert into test(id, name, day)
+	values(:b_id,:b_name,to_date(:b_day,'yyyymmdd'));
+
+end;
+/
+
+-- 호출단위 프로그램은 바깥에서 rollback, commit 을하고
+나머지 값들은 안에서 commit,rollback을 한다.
+
+begin
+	insert into test(id,name,day)
+	select employee_id, last_name, hire_date
+	from employees;
+end;
+/
+
+select * from test; 
+
+-----------------------------
+begin
+
+	update test 
+	set name='박찬호'
+	where id=1;
+end;
+/
+------------------------------
+var b_id number
+var b_name varchar2(20)
+
+exec :b_id:=1
+exec :b_name:='박찬호'
+
+begin
+	update test
+	set name= :b_name
+	where id=:b_id;
+	dbms_output.put_line(sql%rowcount);
+end;
+/
+
+select * from test;
+rollback;
+
+암시적 커서의 속성 갯수가 나오는 수:  sql%rowcount
+
+var b_id number
+var b_name varchar2(20)
+
+exec :b_id:=1
+exec :b_name:='박찬호'
+
+begin
+	update test
+	set name= :b_name
+	where id=:b_id;
+	dbms_output.put_line('수정된 문장의 수 : '||sql%rowcount); -- 숫자가 변한것을 확인 할 수 있다.
+end;
+/
+
+select * from test; 
+
+begin
+	insert into test(id,name,day)
+	select employee_id, last_name, hire_date
+	from employees;
+	dbms_output.put_line('수정된 문장의 수 : '||sql%rowcount);
+end;
+/
+
+rollback;
+drop table emp purge;
+----------------------------------------------------------
+create table emp as select * from employees;
+
+begin
+	update emp
+	set salary = salary * 1.1
+	where department_id = 30;
+
+	dbms_output.put_line(sql%rowcount||'행이 수정'); -- 바로전꺼의 dml 수정값이 나온다.
+end;
+/
+
+rollback;
+------------------------------------------------------------
+begin 
+	delete from emp where department_id=20;
+	dbms_output.put_line(sql%rowcount||'행이 수정'); --따로따로 다 해줘야한다.
+	update emp
+	set salary = salary * 1.1
+	where department_id =30;
+	dbms_output.put_line(sql%rowcount||'행이 수정');
+
+end;
+/
+rollback;
+------------------------------------------------------------------------------
+
+begin 
+	update emp
+	set salary = salary * 1.1
+	where employee_id = 100;
+
+	if sql%found then 
+		dbms_output.put_line('수정됨');
+	else 
+		dbms_output.put_line('수정안됨');
+	end if;
+	rollback;
+end;
+/
+
+#if // end if ; 
+
+if 조건= TRUE then
+	추출값
+else
+	추출값
+end if;
+
+sql%found - boolean함수 (앞의 문장이 DML 영향을 받았으면 TRUE 아니면 FALSE)
+
+
+begin 
+	update emp
+	set salary = salary * 1.1
+	where employee_id = 00;
+
+	if sql%found then 
+		dbms_output.put_line('수정됨');
+	else 
+		dbms_output.put_line('수정안됨'); -- 수정안됨으로 간다. False 이므로
+	end if;
+	rollback;
+end;
+/
+-----------------------------------------------------------------------------------
+
+sql%notfound - 앞의 함수값이 FALSE 이면 값을 받고 TRUE 이면 else값으로 간다.
+
+begin 
+	update emp
+	set salary = salary * 1.1
+	where employee_id = 00;
+
+	if sql%notfound then 
+		dbms_output.put_line('수정안됨');
+	else 
+		dbms_output.put_line('수정됨'); 
+	end if;
+	rollback;
+end;
+/
+
+---------------------------------------------------------------------------------------
+
+# delete와 상관없이 update값이 되는 이유는 update 문장이 더 문장에 가깝기 때문에 update 로 따진다.
+
+begin
+	delete from emp where department_id = 10;
+	update emp
+	set salary = salary * 1.1
+	where employee_id =00;
+
+	if sql%notfound then 
+		dbms_output.put_line('수정안됨');
+	else 
+		dbms_output.put_line('수정됨'); 
+	end if;
+	rollback;
+end;
+/
+
+----------------------------------------------------------------------------------------
+
+암시적 CURSOR에서 DML에 따라 값이 결정되는 함수들 : sql%found, sql%notfound, sql%rowcount
+
+-- select 에서는 구현은 되지만 만약 FALSE 값이면 값자체가 실행이 되지 않기 때문에 위의 함수들을 쓸 이유가 없다.
+
+declare
+	v_last_name employees.last_name%type;
+	v_salary employees.salary%type;
+
+begin
+	select  last_name, salary
+	into v_last_name,v_salary
+	from employees
+	where employee_id=00;
+
+	if sql%found then
+	dbms_output.put_line('결과=> '||'사원번호: ' || (:b_id) || ',사원이름: ' || v_last_name || ',사원급여: ' || v_salary)
+	else
+		dbms_output.put_line('사원이 없습니다.')
+	end;
+end;
+/
+
+
+
+
+

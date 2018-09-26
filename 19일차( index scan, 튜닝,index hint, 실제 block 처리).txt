@@ -1,0 +1,494 @@
+# index scan
+
+1. index unique scan
+2. index range scan
+3. inlist iterater (in연산자, or연산자)
+4. index skip scan (9i 버전이후 ) - 선행 컬럼이 중복값이 많을수록 좋다. (뒤에 것만 스캔을 하면 더 효율적이므로), 만약 유예값 (적은값이면) 다 확인해야하므로 좋지않다.
+5. index full scan
+
+★ 하나는 access 하나는 filter로 할경우 access로 통하러 간다음에 filter을 수행했는데 없다면 성능이 떨어지므로 조합인덱스를 사용한다. 
+    merge를 쓰는 것보단 조합이 좋으므로 사용
+    where절에 자주 사용하는 값들은 조합으로 묶는것이 좋다.
+
+select * from user_ind_columns where table_name='EMP'; -- 어느컬럼에 인덱스가 걸려있는지 확인하는 방법
+
+--늘상 같이 쓴다고 가정 (where 절에 같이 쓴다.)
+explain plan for 
+select * 
+from emp 
+where last_name='King' 
+and first_name='Steven';
+
+select * from table(dbms_xplan.display(null,null,'typical')); -- 하나로 합쳐서 실행 
+
+-------------------------------------------------------------------------------------------------------
+| Id  | Operation                   | Name                    | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                         |     1 |    69 |     2   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP                     |     1 |    69 |     2   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN          | EMP_FIRST_LAST_NAME_IDX |     1 |       |     1   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+2 - access("LAST_NAME"='King' AND "FIRST_NAME"='Steven')
+ 
+# random i/o - 가장 일반적인 방법 (일반적으로 i/o가 일어나는 것), 한건의 block을 찾으려고 access 하는것을 의미 (root-branch-leaf)
+# serial i/o - 순차적스캔을 의미 , non-unique-scan 에서 leaf block 을 range scan 할 때를 의미한다.
+
+조합 인덱스에서 선행 컬럼을 쓰지 않았을 때 full scan 이였다. (8버전까지)
+
+# skip scan 이 잘 돌아 가려면 선행컬럼이 중복이 많아야 좋다. 후행은 값이 중복성이 없고 유일성이 좋을 수록 skip scan이 좋다.
+
+explain plan for 
+select * 
+from emp 
+where first_name='Steven';
+
+select * from table(dbms_xplan.display(null,null,'typical')); 
+
+| Id  | Operation                   | Name                    | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                         |     1 |    69 |     2   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP                     |     1 |    69 |     2   (0)| 00:00:01 |
+|*  2 |   INDEX SKIP SCAN           | EMP_FIRST_LAST_NAME_IDX |     1 |       |     1   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("FIRST_NAME"='Steven')
+       filter("FIRST_NAME"='Steven')
+
+3. inlist iterator - list에 in 있을때 반복하는 방식 (root-branch-leaf가 반복하는 방식), in,or을 사용 하였을 때 발생
+
+explain plan for 
+select * 
+from emp 
+where employee_id in(100,200);
+
+explain plan for select * from emp where employee_id = 100
+union all
+explain plan for select * from emp where employee_id = 200;
+
+select * from table(dbms_xplan.display(null,null,'typical')); 
+
+| Id  | Operation                    | Name      | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |           |     2 |   138 |     2   (0)| 00:00:01 |
+|   1 |  INLIST ITERATOR             |           |       |       |            |          |
+|   2 |   TABLE ACCESS BY INDEX ROWID| EMP       |     2 |   138 |     2   (0)| 00:00:01 |
+|*  3 |    INDEX UNIQUE SCAN         | EMP_ID_PK |     2 |       |     1   (0)| 00:00:01 |
+------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   3 - access("EMPLOYEE_ID"=100 OR "EMPLOYEE_ID"=200)
+
+explain plan for 
+select * 
+from emp 
+where employee_id in(100,101,102) - 집합연산자 를 3번 쓰는 것이므로 좋지 않다. (연속된 숫자는 좋지 않다)
+
+따라서 between으로 하는것이 좋다.
+
+-- 해결
+explain plan for 
+select * 
+from emp 
+where employee_id between 100 and 102; (range scan으로 됨)
+
+
+select * from user_ind_columns where table_name='EMP'; - 확인
+select * from user_cons_columns where table_name='EMP';
+select * from user_constraints where table_name='EMP';
+
+explain plan for 
+select * 
+from emp 
+where employee_id = 100;
+select * from table(dbms_xplan.display(null,null,'typical')); 
+
+- full scan으로 바꾸는 방법
+explain plan for 
+select /*+ full(e) */ *
+from emp e
+where employee_id = 100;
+select * from table(dbms_xplan.display(null,null,'typical'));  
+
+-- 갯수 확인
+select department_id, count(*)
+from emp
+group by department_id;
+
+explain plan for 
+select *
+from emp
+where department_id=10;
+
+select * from table(dbms_xplan.display(null,null,'typical'));  
+
+-----------------------------------------------------------------------------------------------
+| Id  | Operation                   | Name            | Rows  | Bytes | Cost (%CPU)| Time     |
+-----------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                 |    10 |   690 |     2   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP             |    10 |   690 |     2   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN          | EMP_DEPT_ID_IDX |    10 |       |     1   (0)| 00:00:01 |
+-----------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("DEPARTMENT_ID"=10)
+
+explain plan for  
+select *
+from emp
+where department_id=50;
+
+ 
+-----------------------------------------------------------------------------------------------
+| Id  | Operation                   | Name            | Rows  | Bytes | Cost (%CPU)| Time     |
+-----------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                 |    10 |   690 |     2   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP             |    10 |   690 |     2   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN          | EMP_DEPT_ID_IDX |    10 |       |     1   (0)| 00:00:01 |
+-----------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("DEPARTMENT_ID"=50)
+
+-- 가정 전체 중에 가장 많은 값을 찾는다고 가정 - index로 가는데 random i/o 가 너무많이 발생해서 좋지않다.
+-- full scan 으로 하는 것이 좋다.
+
+explain plan for
+select /*+ full(e)*/ *
+from emp e
+where department_id=50;
+--------------------------------------------------------------------------
+| Id  | Operation         | Name | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |      |    10 |   690 |     3   (0)| 00:00:01 |
+|*  1 |  TABLE ACCESS FULL| EMP  |    10 |   690 |     3   (0)| 00:00:01 |
+--------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   1 - filter("DEPARTMENT_ID"=50)
+
+select * from table(dbms_xplan.display(null,null,'typical')); 
+
+-- 항상 분석하기전 전체 건수를 비교 하고 , 통계 수집한 수와 전체 수가 같은지도 확인해야한다. (Last_analaysis 도 확인을 해야한다.)
+
+★ non_unique_index는 반드시 값 목록을 확인하고 목록에 따른 scan을 골라서 설정을 해줘야 한다. 
+select department_id, count(*) from emp group by department_id;
+
+★ 튜닝의 의미 : i/o 갯수가 적냐 많냐를 따져서 적은것으로 해주는 것을 의미
+
+cost = i/o + cpu 
+
+★ f10,explain 값들은 모두 예측이라고 생각해야한다. 즉, cost값이 의미가 없다.
+
+-- 잘못 쓴 경우 ( 값이 하나이므로)
+
+explain plan for
+select /*+ full(e)*/ *
+from emp e
+where department_id=10;
+
+# 인덱스 힌트
+
+explain plan for
+select /*+ index(e emp_dept_id_idx)*/ *
+from emp e
+where department_id=10;
+
+explain plan for
+select /*+ index(테이블이름(or 테이블별칭) 인덱스이름)*/ *
+from 테이블이름
+where 조건;
+
+# index_rs - range scan으로 유도해주는 힌트, 즉 그냥 index 하는 경우 여러방향으로 index를 보기 때문에 어떤 index인지 알수가 없다.
+
+explain plan for
+select /*+ index_rs(e emp_dept_id_idx)*/ *
+from emp e
+where department_id=10;
+
+explain plan for
+select /*+ index_rs(테이블이름(or 테이블별칭) 인덱스이름)*/ *
+from 테이블이름
+where 조건;
+# skip scan을 막아야 할 경우 힌트를 써서 막는다. (값들의 종류에따라 조합 scan이 걸려 있더라도 따로 해서 값을 낼수 있다.)
+
+# index_ss - skip scan을 유도하는방법
+
+explain plan for 
+select /* index_ss(e emp_first_last_idx) */ *
+from emp e
+where first_name='Steven';
+
+explain plan for
+select /*+ index_ss(테이블이름(or 테이블별칭) 인덱스이름)*/ *
+from 테이블이름
+where 조건;
+
+-- 중복값을 찾을 땐 distinct 하는것도 하나의 방법이다. 전체값과 비교해서 한다.
+
+★★★ 결국 값의 분포도에 따라 튜닝을 어떻게 할지 결정해야 한다.
+
+# index도 많은 것이 좋지 않다. 이유는 색인이 많을수록 찾기가 어렵기 때문이다. (실행계획을 계속 하나하나 optimazer가 짜야하기 때문에 좋지않다. )
+  그래서 4개 정도 만드는 것만 권장을 한다.
+
+
+select * from table(dbms_xplan.display(null,null,'typical')); 
+
+# select 절에 index로 되어있으면 index로 하는것이 좋다. (index만 검색하면 되므로), index block이 table 보다 작으므로
+explain plan for -- index로 하는 것이 좋다. 
+select  employee_id
+from emp;
+
+explain plan for  -- salary는 index가 되어있지 않으므로 employee_id로 가서 하면 107+3 = 110 번의 i/o 발생하므로 full로 하는것이 좋다. 
+select  employee_id,salary
+from emp;
+
+# 즉, 필요한 값을 select할땐 다른건 쓰지말고 필요한 값만 select에 넣어서 하는것이 튜닝에 좋다.
+
+# 조합인덱스에 걸린 값을 select하면 인덱스 값들이 있기 때문에 index scan으로 나온다.
+
+explain plan for 
+select  last_name,first_name
+from emp;
+
+select * from table(dbms_xplan.display(null,null,'typical'));
+
+# 대용량 테이블에서 전체 건수를 세야 할 때 
+
+explain plan for
+select count(*) -- count는 null값을 포함한다. full scan으로 나오지 않고 index로 나오는 이유는 index가 더 작기 때문이다. (*으로 할경우 pk값을 먼저 찾는다)
+from emp;      -- not null 조건이 걸려 있는 값을 찾아서 센다.
+select * from table(dbms_xplan.display(null,null,'typical'));
+-- ★★ full scan을 하게 되면 table 전체 값(block수가 많다, 즉,column마다 block을 찾아야 하므로 무리가 온다.)을 가져오니까 index(작은값)로 가져오는 것이 좋다.
+
+예)
+
+explain plan for
+select count(employee_id) -- 즉, 컬럼을 선택할 땐 not null 조건이 있는 값을 수행해야한다.
+from emp;
+select * from table(dbms_xplan.display(null,null,'typical'));
+-- 인덱스를 걸게 되면 null은 존재하지 않는 값이기 때문에 null은 빼고 index를 건다.
+
+table full scan - multi block i/o
+# index full scan - single block i/o, 속도가 느리다. 인덱스는 정렬방식으로 만들어 져있다.(오름차순)
+
+
+# fast full scan - multiblock i/o 발생 , 속도가 빠르다. , 순서도 관계 없으므로 테이블 전체를 셀때는 fast full scan을 사용하는것이 좋다.
+
+explain plan for
+select /*+ index_ffs(e emp_id_pk) */ count(*)
+from emp e;
+select * from table(dbms_xplan.display(null,null,'typical'));
+
+ | Id  | Operation             | Name      | Rows  | Cost (%CPU)| Time     |
+---------------------------------------------------------------------------
+|   0 | SELECT STATEMENT      |           |     1 |     2   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE       |           |     1 |            |          |
+|   2 |   INDEX FAST FULL SCAN| EMP_ID_PK |   107 |     2   (0)| 00:00:01 |
+
+
+explain plan for
+select /*+ index_ffs(테이블이름(or 테이블별칭) 인덱스이름 (not null 조건 or primary 조건에서만 가능<전체건수를 쓰는데 문제가 되지 않으므로>)*/ *
+from 테이블이름
+where 조건;
+
+# parallel_index-더 빠르게 하고 싶다면 parallel_index를 쓴다 (cursor로 바로 값을 가져간다.) 
+★ 주의할점 : multiblock 일때만 parallel이 발생하므로 반드시 fast_full 만 적용이 된다. (direct 인식, 반반나누어서 실행, cpu갯수에 비례)
+
+explain plan for
+select /*+ index_ffs(e emp_id_pk) 
+	 parallel_index(e,emp_id_pk,2) */  
+	 count(*)
+from emp e;
+select * from table(dbms_xplan.display(null,null,'typical'));
+
+# index range scan descending
+
+explain plan for
+select *
+from emp e
+where employee_id >0
+order by employee_id desc; -- 정렬은 index할 때 자동으로 만들어 지므로 정렬은 따로 하지 않는다.
+
+select * from table(dbms_xplan.display(null,null,'typical'));
+
+# 내림차순 인덱스
+ 
+select /*+ index_desc(e emp_id_pk) */ employee_id - 정렬을 따로 걸지 않고 index를 통해 정렬을 하는방법을 의미.
+from emp e;
+
+만약 최대값을 뽑고 싶다면
+
+explain plan for 
+select /*+ index_desc(e emp_id_pk) */ employee_id 
+from emp e
+where rownum<=1;
+
+-----------------------------------------------------------------------------------------
+| Id  | Operation                   | Name      | Rows  | Bytes | Cost (%CPU)| Time     |
+-----------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |           |     1 |     4 |     1   (0)| 00:00:01 |
+|*  1 |  COUNT STOPKEY              |           |       |       |            |          | -- rownum 을 멈춘값
+|   2 |   INDEX FULL SCAN DESCENDING| EMP_ID_PK |     1 |     4 |     1   (0)| 00:00:01 |
+-----------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   1 - filter(ROWNUM<=1)
+
+
+select max(employee_id) from emp; -- max는 모든값을 비교해야 하므로 좋지 않다.
+
+explain plan for select max(employee_id) from emp;
+
+| Id  | Operation                  | Name      | Rows  | Bytes | Cost (%CPU)| Time     |
+----------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT           |           |     1 |     4 |     1   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE            |           |     1 |     4 |            |          |
+|   2 |   INDEX FULL SCAN (MIN/MAX)| EMP_ID_PK |     1 |     4 |     1   (0)| 00:00:01 | -- max가 목적이라면 max를 뽑는 방향으로만 scan, min은 반대로 scan을 한다.
+
+ # index로 하면 root - branch - leaf  3번으로 찾는다.
+
+   주문체결도 sequence가 아닌 index로 해놓으면 max/min 값을 효과적으로 찾을 수 있다.
+
+explain plan for select max(employee_id),min(employee_id) from emp; -- 양쪽 값을 다 줄 경우 
+
+select * from table(dbms_xplan.display(null,null,'typical'));
+------------------------------------------------------------------------------
+| Id  | Operation        | Name      | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT |           |     1 |     4 |     1   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE  |           |     1 |     4 |            |          |
+|   2 |   INDEX FULL SCAN| EMP_ID_PK |   107 |   428 |     1   (0)| 00:00:01 |
+------------------------------------------------------------------------------
+쓸 때 없이 바로바로 나오게 하지말고 값을 따로 따로 set집합을 통해서 값을 뽑게 한다.
+
+explain plan for select max(employee_id) from emp
+union all 
+explain plan for select min(employee_id) from emp;
+
+ ★ 쓰는 값이 index가 걸려있다면 힌트를 써서 하는 것이 아니라 바로 max, min을 구하면 좋다.
+
+explain plan for 
+select /*+ index_asc(e emp_id_pk) */ employee_id 
+from emp e
+where rownum<=1;
+
+------------------------------------------------------------------------------
+| Id  | Operation        | Name      | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT |           |     1 |     4 |     1   (0)| 00:00:01 |
+|*  1 |  COUNT STOPKEY   |           |       |       |            |          |
+|   2 |   INDEX FULL SCAN| EMP_ID_PK |     1 |     4 |     1   (0)| 00:00:01 |
+------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   1 - filter(ROWNUM<=1)
+
+# 실제 block 처리 확인방법 
+
+-- DBA 접속
+
+grant select on v_$session to hr; 
+grant select on v_$sql to hr;
+grant select on v_$sql_plan to hr;
+grant select on v_$sql_plan_statistics to hr;
+grant select on v_$sql_plan_statistics_all to hr;
+
+--hr 접속
+
+select /*+ gather_plan_statistics */ * -- grant 후 반드시 gather문 실행
+from employees
+where employee_id=100;
+
+select *
+from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 1833546154
+-------------------------------------------------------------------------------------------------------
+| Id  | Operation                             | Name             | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                 |                     |      1 |           |      1   |00:00:00.01 |       2 | -- 총 최대 block access
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMPLOYEES      |      1 |      1    |      1   |00:00:00.01 |       2 |
+|*  2 |   INDEX UNIQUE SCAN            | EMP_EMP_ID_PK |      1 |      1    |      1   |00:00:00.01 |       1 | - 데이터가 적기 때문에 root-branch-leaf를 하나로 따진다.
+-------------------------------------------------------------------------------------------------------		        즉, root와 leaf가 같이 있다.
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("EMPLOYEE_ID"=100)
+
+starts- 몇번 반복 했는지 
+e-rows : 예측으로 처리한 rows
+a-rows : 실제 처리한 rows
+a-times : 처리한 정확한 시간
+buffers : memory에서 찾은 block의 수 , buffer는 누적이다. 즉 1 2 -> 1개만 사용 
+
+select /*+ gather_plan_statistics */ *
+from emp
+where department_id=50;
+
+select *
+from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+ 
+------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                            |  Name                | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |
+------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                 |                        |      1 |           |     45   |00:00:00.01 |       3 |      1 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP                  |      1 |     10   |      45  |00:00:00.01 |       3 |      1 |
+|*  2 |   INDEX RANGE SCAN              | EMP_DEPT_ID_IDX |      1 |     10   |     45   |00:00:00.01 |       1 |      1 |
+------------------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("DEPARTMENT_ID"=50)
+
+reads - 피지컬하게 block을 읽어낸 수 (disk에서 가져온 값)
+buffers - i/o가 수행된 값
+index range scan 에서 buffer 가 적은 이유는 데이터의수가 적어서 root-branch-leaf 가 하나로 볼 수도 있다.
+
+reads 는 버퍼에 포함이 된다.
+
+위에서 보면 45개의 값이 있는데 buffer i/o 가 최대 45가 일어 날수 있으나 buffers 를 보면 3번으로 되어 있다.
+이유는 같은 block에 값들이 모여 있기 때문에 같은 block에 있는 것을 알 수 있다. 따라서 (순차적으로 ★) buffer pin을 해놓고 한번에 값을 찾도록 한다.
+그리고 다음 값이 같은 block에 없다면 buffer pin을 제거하고 다시 다음 leaf의 rowid를 가서 i/o를 수행하고 다음에 buffer pin을 찍어서 값을 찾는다.
+그렇기 때문에 buffer는 rowid를 찾는데 2번으로 수행할 수 있는 것이다.
+
+clustering factor : 수가 적을 수록 좋다. buffer가 옮겨질 때 값이 증가한다.
+clustering factor 가 rows와 같다면 range 스캔으론 최악인거 이므로 full scan으로 하는것이 좋다. (즉, 튜닝을 full scan으로 하는것이 좋다.)
+
+select /*+ gather_plan_statistics full(e) */ *
+from emp e
+where department_id=50;
+
+------------------------------------------------------------------------------------
+| Id  | Operation              | Name | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |         |      1 |           |     45    |00:00:00.01 |       3 |
+|*  1 |  TABLE ACCESS FULL | EMP  |     1   |     10   |     45    |00:00:00.01 |       3 |
+------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   1 - filter("DEPARTMENT_ID"=50)
+ 

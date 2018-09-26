@@ -1,0 +1,194 @@
+
+
+#사원번호를 입력 값으로 받아서 그 사원의 정보를 출력하는 프로그램
+
+var b_id number
+execute :b_id := 100
+
+declare
+  v_rec employees%rowtype;
+
+begin
+  select * into v_rec from employees where employee_id= :b_id;
+  dbms_output.put_line(v_rec.employee_id || ' ' || v_rec.last_name);
+
+exception when no_data_found then
+ dbms_output.put_line(:b_id || ' 사원은 존재하지 않습니다.');
+
+end;
+/
+
+# 익명구조블락의 문제
+
+1. 매번 수행할 때마다 compile을 다시 해줘야한다.
+2. 프로그램 공유가 되지 않음
+3. 입력값/리턴값 처리가 되지 않음
+
+↓↓↓개선
+
+# 오브젝트 구조
+
+-----------------------------------------------------------------
+## CREATE PROCEDURE 
+
+create or replace procedure emp_proc(p_id in number)
+
+is
+  v_rec employees%rowtype;
+begin
+
+--p_id := 200;을 작성하면 오류. 상수이기 때문에 한 번 받은 값에 대해서만 사용
+
+  select * into v_rec from employees where employee_id= p_id;
+  dbms_output.put_line(v_rec.employee_id || ' ' || v_rec.last_name);
+
+exception when no_data_found then
+ dbms_output.put_line(p_id || ' 사원은 존재하지 않습니다.');
+
+end;
+/
+
+# emp_proc(p_id number) :프로시저 명+형식 매개변수(입력변수)
+
+# 형식 매개변수는 사이즈를 적어주면 안된다.
+
+# 프로시저는 별다른 수정기능이 없다. drop procedure emp_proc; 으로
+  프로시저 삭제 후 다시 생성해줘야한다.
+→or replace가 없어도 되나 or replace를 작성해줘야 다시 생성할 수 있음
+
+# 바인드 변수 사용 못함
+
+# declare 대신 is 혹은 as 사용
+
+# 변수 선언할 것이 없고, 예상 선언, 명시적 선언을 할 것이 없더라도 is/as절은 필수
+
+# 프로그램 안에 형식매개변수값을 주면 오류가 난다. 오로지 execute로만 받을 수 있다.
+
+exec emp_proc(100)	# 실제 매개변수를 형식 매개변수에 대입하는 과정
+
+exec emp_proc(300)	# 상수로 동작한다.<in mode로 되어있는 매개변수는 초기값이 필요하다
+
+
+# 다른 프로그램에서 호출할 때는 exec를 사용하지 않음
+
+begin emp_proc(100); 
+end;
+/	
+
+select text
+from user_source
+where name='EMP_PROC';	#dictionary view
+
+# 프로시저 구문의 경우 롤백/커밋을 실행할 때 구문 작성자가 수행할 것인지,
+  execute값을 주는 사람이 수행할 것인지를 의견조율 해야 한다.
+
+# 만약 오류를 가지고 오브젝트가 만들어졌다는 결과가 나오면 show error를 통해 확인한다.
+→오브젝트 단위의 에러 확인시 show error 사용
+
+# 성공해도, 실패해도 코드는 그대로 남아있다
+
+-------------------------
+
+create or replace procedure emp_proc(p_id in number default 0)
+
+is
+  v_rec employees%rowtype;
+
+begin
+  select * into v_rec from employees where employee_id= p_id;
+  dbms_output.put_line(v_rec.employee_id || ' ' || v_rec.last_name);
+
+exception when no_data_found then
+ dbms_output.put_line(p_id || ' 사원은 존재하지 않습니다.');
+
+end;
+/
+
+exec emp_proc( )
+
+# number default 0으로 설정하고 exec시에 상수값을 주지 않으면 디폴트 값 0이 대입되어 결과가 출력된다.
+  만일 디폴드 값을 주지 않고 exec에 상수값을 주지 않으면 에러 발생.
+
+# 디폴트 값은 타입에 맞춰서 부여해야한다.
+
+-----------------------------------------------------------------
+
+create or replace procedure emp_proc
+(p_id in number default 0, p_name out varchar2, p_sal out number)	# 형식 매개변수
+is
+begin
+  select last_name, salary
+  into p_name, p_sal from employees where employee_id= p_id;
+  dbms_output.put_line(p_name || ' ' || p_sal);
+ exception when no_data_found then
+ dbms_output.put_line(p_id || ' 사원은 존재하지 않습니다.');
+end;
+/
+desc emp_proc
+
+var b_name varchar2(30)
+var b_sal number
+exec emp_proc(200, :b_name, :b_sal)	#실제 매개변수
+
+print b_name b_sal
+
+select * from employees where salary> :b_sal;
+
+# p_name out varchar2, p_sal out number
+ :out mod로 되어있는 변수들은 값을 프로그램 안에서 바깥으로 전달해주겠다
+
+# 바깥쪽에서 받으려면 변수로 받아야한다>desc로 테이블의 구조 확인
+
+# exec+프로시저 명(입력 받을 값, out모드-받을 변수명 , out모드-받을 변수명)
+  :실제 매개변수는 형식 매개변수와 대응되게 작성해줘야한다.
+
+# in mode는 프로그램 안에서 상수로 동작하고 out mode는 변수로 동작함
+
+
+declare
+  v_id number := 100;
+  v_name varchar2(30);
+  v_sal number;
+
+begin
+  emp_proc(v_id, v_name, v_sal);
+  dbms_output.put_line(v_id || ' ' || v_name || ' ' || v_sal);
+
+end;
+/
+
+# 위와 같이 프로그램을 호출하는 곳에서 값을 전달받을 수도 있다.
+
+-------------------------
+
+create or replace procedure format_phone
+(p_phone_no in out varchar2)
+is
+begin
+  p_phone_no := substr(p_phone_no, 1, 3) || '-' || substr(p_phone_no, 4, 4)
+			 || '-' || substr(p_phone_no, 8);
+end;
+/
+
+var b_phone varchar2(30)
+exec :b_phone := '01012345678'
+print b_phone
+
+exec format_phone(:b_phone)
+print b_phone
+
+# in out mode일때 실제 매개변수는 변수 값으로 설정해줘야한다.
+
+→바인드 변수 안의 값이 프로그램 안쪽의 p_phone_no로 가 포맷이 변경된 뒤
+   exec format_phone으로 내려올 때 받을 수 있는 값이 필요하기 때문.
+   만일 숫자나 '문자' 값으로 입력하면 내려온 값을 받을 수가 없다.
+
+
+
+
+
+
+
+
+
+

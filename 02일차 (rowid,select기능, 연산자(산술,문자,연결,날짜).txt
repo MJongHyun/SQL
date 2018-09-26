@@ -1,0 +1,377 @@
+RDBMS 안에 있는 데이터를 조작하는 언어는 SQL뿐이다.
+
+select 문 (data quary language) 데이터조회 업무
+
+기능 
+1.projection 열단위
+2.selection 행단위
+3.join 두테이블을 통해 원하는 값 추출
+
+# 유저가 가지고 있는 테이블 목록 확인
+select * from tab; - hr(사용자) 테이블 값들 추출
+
+# 테이블의 구조 확인하는 방법
+desc employees - employees 테이블에 있는 속성 값들을 추출, desc 문은 꼭 세미콜론을 하지않아도 된다.
+
+varchar2 - 문자 타입(가변길이 문자타입) 괄호안 숫자까지 최대값을 받지만 10자리 이후엔 받지않는다.
+	   그리고 10자리보다 작다면 작은 값으로 공간만 받는다
+	   장점: 공간의 활용이 좋다
+           단점: 공간이 필요할 때 수정을 할 수 있지만 공간을 확보해야하는 어려움이 있다.
+
+DATE - 날짜 타입, 사이즈가 들어가지않고 7byte로 고정되어있다.
+
+Number(a,b) a 전체 자리수 중 b 자리는 소수점으로 사용하겠다.
+
+예 NUMBER(8,2) 전체 8자리수 중 2자리는 소수로 사용하겠다.
+
+TYPE 값들을 통해 어떤 값들이 있을지 추측이 가능해야한다.
+
+NOT NULL - 필수로 값이 필요하다.
+
+* 있어야 할 값에 필수 항목이 되어있지 않은 경우도 있기 때문에 꼼꼼히 체크를 해야한다.
+
+결측치를 통해 문제가 많이 일어날 수 있기에 모델링을 할 때 주의해야한다.
+
+select last_name, salary from employees;
+
+SELECT LAST_NAME, SALARY FROM EMPLOYEES;
+
+동일한 SQL문의 기준 (메모리사용량을 줄여준다.)
+
+1. 대소문자 일치
+2. 공백일치, TAB KEY, ENTER KEY
+3. 주석 /* 주석내용 */ 또는 --주석내용 <주석이 설명을 도와주기 때문에 확실하게 주석을 써줘야한다.>
+4. 실행계획을 제어하는 힌트 /*+ FULL(E) */
+5. 상수값, 리터럴값이 일치가 되어야 한다.
+
+select * 
+from employees 
+where employee_id=100;
+
+select * 
+from employees 
+where employee_id=200;
+
+RDBMS 에 row값을 insert 할경우 고유한 주소 값을 가지게 된다.
+
+rowid- 물리적인 row 주소값
+select rowid, employee_id from employees; - rowid: row의 주소를 알 수 있는 명령어
+
+ex) AAAEAb AAE AAAADN AAA	100
+    AAAEAb : object id (맨 앞 6자리)
+    AAE : data file 번호
+    AAAADN : block 번호 (page번호)
+    AAA : row slot 번호 (block 안에서의 위치를 뜻함)
+
+데이터 값을 가장 빨리 찾는 방법 : rowid 값을 찾아서 적으면 가장 빠르다 (항상 ''써서 사용)
+select * 
+from employees
+where rowid='AAAEAbAAEAAAADNAAA';
+
+select * 
+from employees 
+where employee_id=100;
+
+두개가 같지만 I/O 발생이 하지않아서 속도가 다르다.
+인덱스 매커니즘 - 책의 색인처럼 인덱스를 구성해놓은 것
+rowid 스캔이 가장 빠르지만 기억하기 어려우므로 index 스캔으로 값을 찾는다.
+SQL 동일한 값을 사용하게 하도록 변수값으로 해서 진행을 한다.
+
+data 처리하는 방법은 2가지 방법 뿐이다.
+1. FULL SCAN 
+2. rowid SCAN
+	2.1 by user rowid
+	2.2 index rowid scan
+
+# 연산자 사용이 가능하다.
+select employee_id,salary * 12
+from employees;
+ 
+# 연산자 
+1. 산술연산자 (사칙연산자): *,/,+,-
+
+타입별 
+number : *,/,+,-
+date: +,-
+char: 사칙연산 할 수 없다.
+
+날짜는 지역에 따라 다르다.
+
+연산순서를 바꾸고 싶다면 괄호를 통해 바꾼다.
+1순위 *,/
+2순위 +,-
+(((a*b)/c)+d)
+----------
+1
+----------------
+2
+--------------------
+3
+
+select employee_id,salary,commission_pct,
+	salary*12+nvl(commission_pct,0) ann_sel
+from employees;
+<nvl 함수 null값이 있다면 다른값으로 대체하는 함수를 의미한다.>
+<효율식 뒤에 띄어쓰기 한 후 명칭을 적으면 효율식의 명칭이 바뀐다.>
+
+* sql은 비절차적언어라서 프로그램을 가미시켜야 if문과 같은 값을 사용할수 있다.
+* pl/sql을 통해 함수를 짜야 값을 사용이 가능하다
+
+
+# null로 사칙연산을 하게 되면 사칙연산에 상관없이 무조건 null값이 나온다.
+
+#null값 정의
+
+1. null은 사용할 수 없거나, 할당되지 않았거나, 알수 없거나, 적용할수 없는 값이다.
+2. null은 0이나 공백이 아니다.
+
+# 열 별칭(alias)
+1. 열 이름을 다른 이름으로 바꾼다.
+2. 열 이름 바로뒤에 한칸 띄운뒤에 사용할 수 있고 또는 as 키워드 뒤에 사용할 수 있다.
+3. 열 별칭에서 특수문자는 _,#,$ 만 가능하다.
+   그외의 특수문자를 사용할 때는 "" 묶어서 사용하면 된다. ex) "a/a"
+4. ""을 사용하면 대소문자도 구분된다.
+5. 열별칭 처음은 무조건 문자가 와야한다.
+
+select last_name || first_name || salary -> 하나로 합치게 하고 싶다면 ||을 사용한다 (연결 연산자)
+from employees;
+
+# 연결 연산자
+1. 열이나 문자열을 다른 열에 연결할때 사용된다.
+2. 두개의 세로선(||)으로 나타낸다.
+3. 결과는 문자식으로 생성된다.
+4. 특정 문구를 추가하고 싶다면 ''(리터럴문구)를 사용한다. <반드시 연결연산자와 합쳐서 사용해야한다.> ex) a||'a' 사용불가
+
+
+select last_name || 'is a' || job_id
+from employees;
+
+select last_name||'is a'||job_id as "emp details"
+from employees;
+
+select 'My name is' ||last_name
+from employees;
+
+select 'My name''s ' ||last_name
+from employees;
+
+select q'[My name's]' ||last_name
+from employees;
+
+<q'[어떤문자를 넣어도 그대로 표현가능]'>
+
+select q'{[My name's]}' ||last_name
+from employees;
+
+select q'<{[My name's]}>' ||last_name
+from employees;
+
+select q'!<{[My name's]}>!' ||last_name
+from employees;
+
+오후수업
+
+# 중복값 제거
+  distinct: 중복값을 제거한다. sort 또는 hash라는 알고리즘을 통해 제거된다. 반드시 열값 앞에 적어놓는다.
+select distinct department_id from employees;
+  각각 distict가 되는거라서 하나의 값은 중복이 될수도 있다.
+select distinct department_id,job_id from employees;
+
+# where 절을 통해 행을 제한한다.
+비교연산자 : =,>,>=,>,>=,   [ !=,^=,<> ]  같지않다를 의미한다.
+
+select * 
+from employees
+where department_id=30; 
+
+select *
+from employees
+where salary>10000;
+
+# where 비교연산자를 쓸 때 문자형일 경우는 리터럴문자형으로 표현해야한다.
+  즉 정확한 type을 알아야 sql에 무리가 가지 않는다. <꼭 Type 형태를 확인하자! desc로!>
+select *
+from employees
+where last_name='King';
+
+비교 할 때 
+number 와 number 일 경우 
+number 와 char 일 경우 ->char가 number로 가려고 한다.
+
+즉, where dempartment_id=to_number('30'); 이런식으로 함수가 변환을 한다.
+column은 변환되지 않고 값만 변환되서 실행이 된 것이다.
+
+그러나 
+char 와 number일 경우
+그러면 colume에 to_number 즉, where to_number(department_id)=30; 로 바뀌어 full scan으로 바뀌게된다.
+이렇게 되면 과부하가 된다.
+
+select *
+from employees
+where lower(last_name)='king'; lower - 모두 소문자로 바꿔주는 함수이다.
+
+<하지만 full scan으로 바뀌게된다.>
+
+
+select *
+from employees
+where upper(last_name)='KING'; upper - 모두 대문자로 바꿔주는 함수이다.
+
+
+select *
+from employees
+where initcap(last_name)='King'; initcap - 첫글자 대문자, 나머지 소문자로 바꿔주는 함수이다.
+
+<변형 했을 시 index Scan이 될수도 있고 full Scan으로 나올수 있다. I/O 가 많이 나오니 꼭 index scan이 되도록 한다.>
+
+RR/MM/DD
+
+select employee_id, hire_date 
+from employees;
+
+DATE-지역에 따라 날짜의 모양이 틀려진다. 지역의 특성에 맞게 코딩을 해야한다.
+예) 미국 DD-MON-RR
+
+select *
+from employees
+where hire_date='2001/01/13';
+
+select *
+from employees
+where hire_date='2001-01-13';
+
+비교할 때
+date와 char를 비교할 땐 char를 지역에 맞게 format형식에 맞게, 사용한다면 즉, (RR/MM/DD)형식으로 한다면 실행이 가능하도록 한다.
+<암시적으로 프로그램이 돌아감>
+
+select *
+from employees
+where hire_date='20010113';
+
+select *
+from employees
+where hire_date='13-JAN-2001'; -> 미국식이라서 되지 않는다
+
+
+만약 모든 공간을 2001-01-13 으로 하고 싶다면
+
+select *
+from employees
+where hire_date=to_date('2001-01-13', 'yyyy-mm-dd'); # 날짜로 변환해준다. char를 date 타입으로 변환해주는 함수를 의미한다. 
+<명시적으로 프로그램이 돌아감>
+ * 그리고 무조건 변환을 하고 싶다면 숫자로만 해야한다! 문자는 불가! 형태는 같게한다! *
+
+select *
+from employees
+where department_id=50
+and salary >= 10000;
+
+select *
+from employees
+where department_id=50
+or department_id=40;
+
+
+select *
+from employees
+where hire_date=to_date('2001-01-13');
+
+select *
+from employees
+where hire_date=to_date('01/13/2001','mm/dd/yyyy');
+
+select * 
+from employees
+where salary between 2500 and 3500; - between은 작은값 and 큰값으로만 해야 실행이 가능하다. (between 이상 이하만 가능하다.)
+
+# between number타입만 되는것이 아니라 모든 타입이 가능하다.
+
+select *
+from employees
+where manager_id=100 
+or manager_id=101 
+or manager_id=200;
+
+select *
+from employees
+where manager_id in(100,101,200); in값에 해당되는 값 출력
+
+select *
+from employees
+where manager_id not in(100,101,200); in값에 해당되지 않는 값 출력 (이건 and로 받는다. OR부정이니까!)
+
+select *
+from employees
+where manager_id<>100 
+and manager_id<>101 
+and manager_id<>200;
+
+select *
+from employees
+where manager_id not in(100,101,null); 이 경우 나오지 않는다 왜냐면 True & Null 과 같은 의미이기 때문에 무엇이 나올지 모른다.
+
+select *
+from employees
+where manager_id<>100 
+and manager_id<>101 
+and manager_id<>null;
+
+select *
+from employees
+where manager_id in(100,101,null); 이 경우는 or로 받기 때문에 값이 나온다.
+
+select *
+from employees
+where manager_id=100 
+or manager_id=101 
+or manager_id=null;
+
+# like 문자 패턴 검색하는 연산자
+
+select *
+from employees
+where last_name like 'K%'; 첫번째가 K인 값
+
+select *
+from employees
+where last_name like '_i%'; 두번째가 i이고 나머지 값 % 
+
+< like 연산자는 무조건 문자패턴을 찾는 연산자이다.! >
+
+select *
+from employees
+where job_id like 'SA\_%' escape '\'; - 이제부터 \ 바로뒤에 있는 값은 무조건 _ (그대로 문자값으로) 받는다. 
+
+_를 문자로 인식하게 하는 방법 - escape 
+
+where job_id like 'SA\_\%' escape '\'- _,\는 무조건 문자그대로 값을 받는다.
+
+
+select *
+from employees
+where hire_date like '01%'; - 문자만 검색하는 like이기 때문에 hire_date에 to_char가 들어가기 때문에 원래의 값으로 검색되는것이 아니다
+
+옳은 값으로 바꾸려면 between을 통해 바꾼다.
+
+select *
+from employees
+where hire_date between to_date('2001-01-01','yyyy-mm-dd')
+and to_date('2001-12-31','yyyy-mm-dd');
+
+# 문제는 31일 0시 이후의 주문값들이 날라갈 수 있다.
+
+# 시,분,초까지 들어가서 중요하게 생각하는 값은 범위를 잘 생각해서 값을 넣어야 한다.
+
+# 시,분,초를 따지지 않으면 오라클은 0시 00분 0초로 간다.
+
+select *
+from employees
+where hire_date between to_date('2001-01-01','yyyy-mm-dd')
+and to_date('2001-12-31 23:59:59','yyyy-mm-dd hh24:mi:ss');
+
+select *
+from employees
+where hire_date>=to_date('2001-01-01','yyyy-mm-dd')
+and hire_date<to_date('2002-01-01','yyyy-mm-dd');
+
+# 결론: 날짜 스캔을 할때에는 정말 신중하게 생각해서 값을 추출해야한다.!

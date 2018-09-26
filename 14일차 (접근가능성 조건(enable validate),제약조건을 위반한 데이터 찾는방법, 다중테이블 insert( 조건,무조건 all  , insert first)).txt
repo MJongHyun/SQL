@@ -1,0 +1,200 @@
+# 점선, 실선에 따라 테이블을 무엇부터 만들지 기본키가 뭐고 외래키가 뭐인지도 파악해야 한다. (ERD확인)
+# ERD를 통해 논리적설계표를 만들어서 여러 값들을 적용한다.
+# 자기자신값도 foreign key를 걸어 중복을 없앨 수 있다.
+# 이행 작업을 할 때 insert into 절을 많이 사용한다.
+# 테이블 값을 가져올 땐 반드시 권한을 통해 값을 가져온다.
+
+desc emp -- not null 이외의 조건은 보이지 않는다.
+
+select *
+from user_constraints
+where table_name='EMP'; -- 다른 제약조건을 확인할 수 있다.
+
+alter table emp
+modify dept_id
+constraint emp_dept_id_nn not null; -- 오류가 난다 : 이유는 null값이 이미 데이터에 존재하기 때문이다 그러므로 제약조건을 추가할 수가 없다.
+
+# 즉, 필드값이 모두 데이터 제약조건에 대해 오류가 없다면 제약조건을 추가할 수 있다.
+
+# 만약 안에 있는 데이터를 생각하지 말고 들어오는 데이터 부터 값을 제약하는 방법이 있다. -- enable novalidate: 제약조건 뒤 띄어쓰기 하고 적는다.
+alter table emp
+modify dept_id
+constraint emp_dept_id_nn not null enable novalidate;
+
+novalidate - 안에 있는 데이터 체크하지 말라는 의미.
+
+<오후 수업> ★
+ 
+#  접근 가능성 조건
+
+disable novalidate -- disable을 할 경우 기본값은 novalidate, 제약조건을 없애는 것은 아니지만 제약조건을 비활성화 하고 값을 넣겠다. (제약조건은 만들어 놓아도 수행하지 않겠다.)
+disable validate -- 제약조건을 비활성화 하면서 테이블에서 DML의 모든 작업을 못하게 하는것 
+enable  novalidate -- 기존데이터를 검증하지 않고 제약조건을 활성화 시키겠다.
+enable  validate -- 기본값 (제약을 쓰지않으면 기본값으로 나온다) ->제약조건을 쓰면 바로 활성화 시키겠다. (기존에 안에 있는 데이터부터 검증한 후 값을 넣겠다.)
+	            기존데이터의 값에 제약이 걸리는 값이 있다면 오류가 걸린다.
+
+create table test(id number not null disable novalidate);
+insert into test(id) values(null); -- 제약조건이 활성화 되지 않으므로 값이 들어간다.
+rollback;
+
+alter table test modify id 
+constraint test_id_nn not null 
+disable validate;
+
+select * -- 제약조건 확인
+from user_constraints
+where table_name='TEST';
+
+# DML 실행 후 테이블 삭제는 불가능하다.
+
+create table test(id number,name char(10),sal number);
+insert into test(id,name,sal) values(1,'a',1000);
+insert into test(id,name,sal) values(2,'b',100);
+insert into test(id,name,sal) values(1,'a',2000);
+commit;
+select * from test;
+alter table test add constraint test_id_pk primary key(id); -- id 데이터 값이 중복되서 되지 않는다 (enable validate 가 기본이기 때문에)
+
+alter table test add constraint test_id_pk primary key(id) enable novalidate; -- primary key는 enable novalidate가 불가능하다.
+alter table test add constraint test_id_pk primary key(id) disable; --disable 하게 되면 novalidate가 기본이 된다.
+
+# ★★제약조건을 위반하는 데이터를 찾아야한다. 찾는 방법은? sql plus에서만 수행이 가능하다.
+<우선 user 값을 연결 후 실행해야한다.>
+
+@%ORACLE_HOME%\rabms\admin\utlexpt1 --  윈도우의 환경값 (레지스트리) 정보를 가져오는 것 <반드시 대문자>
+@$ORACLE_HOME/rabms/admin/utlexpt1 -- 유닉스,리눅스 환경값 가져오는 것
+C:\oraclexe\app\oracle\product\11.2.0\server  -- ORACLE_HOME을 의미한다. (경로)
+select * from tab; -- 제약조건의 이상값이 생기면 옮겨지는 값이다.
+
+# desc exceptions -- 문제되는 row_id 와 table_name, 제약조건을 알 수있다.
+
+alter table test enable constraint test_id_pk --  test 값에서
+exceptions into exceptions; -- 위반되는 테이블 값이 있다면 exception 테이블로 옮겨라
+
+select * from exceptions; -- 위반되는 테이블 값이 나온다. 나온 rowid 값을 확인한다.
+
+select * from test where rowid='AAAE+OAAEAAAAGuAAC';
+select * from test where rowid='AAAE+OAAEAAAAGuAAA';
+update test set id=3 where rowid='AAAE+OAAEAAAAGuAAC'; -- rowid를 통해 수정한다.
+select * from test where rowid='AAAE+OAAEAAAAGuAAC'; -- 수정확인
+
+alter table 테이블명 disable/enable constraint 제약조건키이름 exceptions into exceptions;
+
+delete from exceptions; --자동으로 지워지지 않기 때문에 테이블을 지워줘야 한다.
+commit; -- 확인
+
+alter table test add constraint test_sal_ck check(sal>1000) enable novalidate; -- check 값에선 가능하다.
+insert into test(id,name,sal) values(4,'c',500); -- 오류
+
+alter table test enable constraint test_sal_ck exceptions into exceptions;
+select * from exceptions;
+update test set sal=null where rowid='AAAE+OAAEAAAAGuAAA'; --오류난 값 바꾼다.
+update test set sal=null where rowid='AAAE+OAAEAAAAGuAAB';
+commit;
+
+disable novaildate -- 모든 조건이 가능하다
+enable novaildate -- unique 와 primary key 이외의 제약조건은 가능하다.
+
+-- exception 해서 바꾸면 이 다음 값은 제약조건이 활성화 되기 때문에 굳이 바꿔주지 않고 계속 실행하면된다.
+
+# 다중테이블 insert (hr접속)
+
+create table sal_history
+as select employee_id,hire_date,salary
+from employees
+where 1=2;
+
+create table mgr_history
+as select employee_id,manager_id,salary
+from employees
+where 1=2;
+
+1. 무조건 insert all --소스데이터의 값을 타겟 데이터에 모두 넣는 방법 (select절: 소스데이터  insert: 타겟데이터), 소스에 있는 데이터값을 values 값에 넣으면된다.
+                               <만약 별칭을 사용했다면, 별칭으로 옮기는 것이 가능하다.>,데이터 마트성 작업이라고 한다.
+
+insert all 
+into sal_history(employee_id,hire_date,salary)
+      values(employee_id,hire_date,salary)
+into mgr_history(employee_id,manager_id,salary)
+      values(employee_id,manager_id,salary)
+select employee_id,hire_date,manager_id,salary 
+from employees;
+
+-- 별칭을 사용한 경우 -- 
+insert all
+into sal_history(employee_id,hire_date,salary)
+      values(id,hire,sal)
+into mgr_history(employee_id,manager_id,salary)
+      values(id,mgr,sal)
+select employee_id id,hire_date hire,manager_id mgr,salary sal 
+from employees;
+
+insert all
+into 타겟테이블이름(타겟테이블 컬럼) values(소스테이블컬럼)
+select 소스테이블컬럼 from 소스테이블;
+
+2. 조건 insert all -- 조건에 해당하는 값만 값을 옮기는 것, 조건에 따라 다들어 갈수 도 있고 하나만 들어가거나 안들어가거나 한다. 
+
+create table emp_history
+as select employee_id, hire_date, salary 
+from employees
+where 1=2;
+
+create table emp_sal
+as select employee_id,commission_pct,salary
+from employees
+where 1=2;
+
+--- when 값이 먼저 실행 
+
+insert all
+when  hire<to_date('2005-01-01','yyyy-mm-dd') then
+into emp_history(employee_id,hire_date,salary)
+	values(id,hire,sal)
+when comm is not null then
+into emp_sal(employee_id,commission_pct,salary)
+	values(id,comm,sal)
+select employee_id id,hire_date hire,salary sal,commission_pct comm
+from employees;
+
+insert all
+when 조건 then
+into 타겟테이블이름(타겟테이블 컬럼) values(소스테이블컬럼)
+select 소스테이블컬럼 from 소스테이블;
+
+3. 조건 insert first -- 첫번째 조건에 해당하면 그조건에만 값이 들어가고 아니면 그다음값 으로 들어가는 평범한 조건절이다.
+
+create table sal_low
+as select employee_id,last_name,salary
+from employees
+where 1=2;
+
+create table sal_high
+as select employee_id,last_name,salary
+from employees
+where 1=2;
+
+create table sal_mid
+as select employee_id,last_name,salary
+from employees
+where 1=2;
+
+insert first
+when salary<5000 then
+into sal_low(employee_id,last_name,salary)
+	values(employee_id,last_name,salary)
+when salary between 5000 and 10000 then
+into sal_mid(employee_id,last_name,salary)
+	values(employee_id,last_name,salary)
+else
+into sal_high(employee_id,last_name,salary)
+	values(employee_id,last_name,salary)
+select employee_id,last_name,salary
+from employees;
+
+insert first
+when 조건 then
+into 타겟테이블이름(타겟테이블 컬럼) values(소스테이블컬럼)
+else
+into 타겟테이블이름(타겟테이블 컬럼) values(소스테이블컬럼)
+select 소스테이블컬럼 from 소스테이블;

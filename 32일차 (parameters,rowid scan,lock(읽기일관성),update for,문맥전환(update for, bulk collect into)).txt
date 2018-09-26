@@ -1,0 +1,414 @@
+
+#아래의 문장은 명시적 커서이지만 이름이 없으므로
+ 커서의 속성을 사용할 수 없기 때문에 아래와 같이 작성한다.
+
+begin
+ for v_rec in
+(select l.city,  e.sumsal,  e.avgsal
+     from (select department_id, sum(salary) sumsal, trunc(avg(salary)) avgsal
+             from employees
+             where hire_date >= to_date('2006-01-01','YYYY-MM-DD')
+             and hire_date < to_date('2007-01-01','YYYY-MM-DD')
+             group by department_id) e, departments d, locations l
+             where e.department_id = d.department_id
+             and d.location_id = l.location_id) loop
+  dbms_output.put_line(v_rec.city||' 도시에 근무하는 사원들의 총액급여는 '||
+			trim(to_char(v_rec.sumsal,'l999,999'))||' 이고 평균급여는 '||
+				trim(to_char(v_rec.avgsal,'l999,999'))||' 입니다.');
+ end loop;
+end;
+/
+
+declare
+  cursor parm_cur_80 is
+	select employee_id, last_name, job_id
+	from employees
+	where department_id=80
+	and job_id='SA_MAN';
+
+# 같은 실행계획을 사용해도 되는 부분인데 각각의 실행계획을 갖고 있다(→상수값이 달라 다른 문장 취급)
+ 
+  cursor parm_cur_50 is
+	select employee_id, last_name, job_id
+	from employees
+	where department_id=50
+	and job_id='ST_MAN';
+	v_rec1 parm_cur_80%rowtype;
+begin
+
+  open parm_cur_80;
+
+  loop
+	fetch parm_cur_80 into v_rec1;
+	exit when parm_cur_80%notfound;
+	dbms_output.put_line(v_rec1.last_name);
+  end loop;
+  close parm_cur_80;
+
+  for v_rec2 in parm_cur_50
+  loop
+	dbms_output.put_line(v_rec2.last_name);
+   end loop;
+
+end;
+/
+----------------------
+# parameter를 갖는 cursor를 사용하는 목적 :실행계획을 공유하기 위해서
+→cursor를 선언할 때 데이터 타입만 기술, 사이즈 쓰면 에러 발생.
+
+declare
+
+  cursor parm_cur(p_id number, p_job varchar2) is
+	select employee_id, last_name, job_id
+	from employees
+	where department_id= p_id
+	and job_id= p_job;
+  v_rec1 parm_cur%rowtype;
+
+begin
+
+  open parm_cur(80, 'SA_MAN');
+  --open parm_cur(50, 'ST_MAN');  # open 밑에 바로 또 open해 줄 수 없다 / 에러 발생
+
+  loop
+	fetch parm_cur into v_rec1;
+	exit when parm_cur%notfound;
+	dbms_output.put_line(v_rec1.last_name);
+  end loop;
+
+  close parm_cur;
+
+  for v_rec2 in parm_cur(50, 'ST_MAN') loop
+	dbms_output.put_line(v_rec2.last_name);
+  
+  end loop;
+end;
+/
+
+# (p_id number, p_job varchar2) : 형식매개변수
+  (80, 'SA_MAN') :실제매개변수
+# 값의 분포가 고르다라는 가정하에 실행계획을 세우는데
+  만일 값의 분포가 고르지 않은 경우엔 parameter cursor를 선언하지 않는다.
+  =실행계획을 공유하지않고 따로 만들어 실행한다
+
+----------------------------------------------------------------------
+# by index rowid scan
+
+declare
+  cursor sal_cur is
+	select e.employee_id, e.last_name, e.salary, d.department_name
+	from employees e, departments d
+	where e.department_id=20
+	and d.department_id=20;
+begin
+  for emp_rec in sal_cur loop
+	dbms_output.put_line(emp_rec.last_name);
+	dbms_output.put_line(emp_rec.salary);
+	dbms_output.put_line(emp_rec.department_name);
+
+	update employees set salary=salary*1.1
+	where employee_id=emp_rec.employee_id;
+  end loop;
+end;
+/
+----------------------
+#by user rowid scan : index rowid scan에서 발생하는 i/o를 줄이기 위해
+
+declare
+  cursor sal_cur is
+	select e.rowid, e.last_name, e.salary, d.department_name
+	from employees e, departments d
+	where e.department_id=20
+	and d.department_id=20;
+begin
+  for emp_rec in sal_cur loop
+	dbms_output.put_line(emp_rec.last_name);
+	dbms_output.put_line(emp_rec.salary);
+	dbms_output.put_line(emp_rec.department_name);
+
+	update employees set salary=salary*1.1
+	where rowid=emp_rec.rowid;
+  end loop;
+end;
+/
+----------------------
+<<차이점>>
+
+update employees set salary=salary*1.1
+where employee_id=100; # 최소 발생 i/o 수=4
+→by index scan
+
+update employees set salary=salary*1.1
+where rowid='AAAEAbAAEAAAADOAAD';  # 최소 발생 i/o 수=1
+→by rowid scan
+
+----------------------------------------------------------------------
+
+# 읽기 일관성에 의해 command 1창에서 salary 값을 업데이트
+  했어도(commit 하지 않음) command 2창에서는 기본값만 보임 (undo에 있는 것을 출력)
+
+# command 2창에서 동일하게 salary값을 업데이트하는 문장을 수행하면
+  waiting단계로 빠지는데 이유는 command 1창에서 commit하지 않았기 때문이다
+  →command 1창에서 salary를 업데이트하는 순간 row에 lock이 걸린 상태이기 때문
+     command 1창에서 rollback 하거나 commit 하는 순간 command 2창의 waiting이 풀림
+
+# 1번 창에서 select salary from employees where employee_id=100 for update; 실행 후
+  2번 창에다 update employees set salary=salary*1.1 where employee_id=100; 실행하면
+  2번 창은 waiting 들어감
+  
+  →select ~ for update;는 미리 lock을 걸어둔 뒤에 DML작업을 하기 위한 방법
+  →순서가 바뀌어서 update~가 수행된 뒤 다른 세션에서 select ~ for update를 실행해도 waiting
+  →select ~ for update;를 종료하는 언어도 rollback;/commit;
+  →DBA가 kill 시키는 것도 종료 방법
+
+----------------------
+
+declare
+  cursor sal_cur is
+	select e.last_name, e.salary, d.department_name
+	from employees e, departments d
+	where e.department_id=20	# 여기도 락이 걸리고
+	and d.department_id=20	# 여기에도 락이 걸림.
+	for update of e.salary wait 3; 	# rowid를 선언한 것과 동일
+				# 사원테이블 컬럼 아무거나 가져다 써도 된다. 
+				  출력할 대상 테이블에 대한 참조용으로만 사용
+				# wait n :n초 이후까지 락이 풀리지 않으면 에러메세지 띄우겠다
+				# nowait :기다리지 않고 바로 에러메세지 띄우겠다.
+begin
+  for emp_rec in sal_cur loop
+	dbms_output.put_line(emp_rec.last_name);
+	dbms_output.put_line(emp_rec.salary);
+	dbms_output.put_line(emp_rec.department_name);
+
+	update employees set salary=salary*1.1
+	where current of sal_cur;	# current of 는 update, delete문의 where절에 사용
+  end loop;			# for update 뒤에 대상 테이블을 지정해주지 않으면
+end;				  업데이트가 실행되지 않음>본래 값이 출력된다.
+/	# 여기서 변화된 값을 보려면 select salary from employees where department_id=20;
+
+# for update+current of 커서명 :두 문장이 같이 와야 실효성이 있음
+
+# cursor ~ for update;는 커서가 오픈 되는 순간 락이 걸리기 때문에 조건이 없는 경우는 괜찮지만
+  만일 특정 조건 대상 rowid에 대해 락을 걸어야한다면 이 실행문보다는
+  update employees set salary=salary*1.1 where rowid=emp_rec.rowid; 가 바람직하다.
+
+----------------------------------------------------------------------
+
+declare
+
+  cursor emp_cur is
+	select * from employees where department_id=20;	#sql 엔진 작업
+  v_rec emp_cur%rowtype;
+
+begin
+
+  open emp_cur;		#pl sql엔진 작업>fetch 시점에 문맥전환 발생
+  fetch emp_cur into v_rec;	#문맥 전환 1번
+	dbms_output.put_line(v_rec.last_name);
+  fetch emp_cur into v_rec;	#문맥 전환 2번
+	dbms_output.put_line(v_rec.last_name);
+  close emp_cur;
+
+end;
+/
+
+# active set결과가 여러 개라면 fetch도 여러번 반복해준다.
+
+----------------------
+
+# plsql 과 sql사이 문맥 전환 발생
+  →과도한 문맥 전환은 성능상 문제가 될 수 있다
+
+declare
+
+  cursor emp_cur is
+	select * from employees where department_id=20;	#sql 엔진 작업
+  v_rec emp_cur%rowtype;
+
+begin
+
+  open emp_cur;
+
+  loop
+  	fetch emp_cur into v_rec;	#pl sql엔진 작업>fetch 시점에 문맥전환 발생
+  	exit when emp_cur%notfound;
+	dbms_output.put_line(v_rec.last_name);
+  end loop;
+ 
+  close emp_cur;
+
+end;
+/
+
+----------------------
+
+declare
+
+  type tab_type is table of employees%rowtype;
+  v_tab tab_type;
+
+begin
+	select * bulk collect into v_tab	# 2차원 배열 변수처리 되어있음
+	from employees where department_id=20;
+
+  for i in v_tab.first..v_tab.last loop
+	dbms_output.put_line(v_tab(i).last_name);
+  end loop;
+
+end;
+/
+
+# bulk collect in to 뒤에는 2G 만큼만 처리할 수 있음
+# bulk collect in to 는 sql 엔진과 pl sql엔진 사이의 문맥전환을 줄일 수 있는 방법
+ =select, fetch 시점에서의 bulk collect in to 는 sql>pl sql 엔진 문맥 전환을 줄이고자 하는 것.
+
+----------------------
+
+declare
+  cursor emp_cur is
+	select * from employees where department_id=20;
+  type tab_type is table of emp_cur%rowtype;
+  v_tab tab_type;
+begin
+  open emp_cur;
+  fetch emp_cur bulk collect into v_tab;
+  close emp_cur;
+  for i in v_tab.first..v_tab.last loop
+	dbms_output.put_line(v_tab(i).last_name);
+  end loop;
+end;
+/
+
+----------------------------------------------------------------------
+
+declare
+  type record_type is record(name varchar2(30), salary number);
+  type tab_type is table of record_type;
+  v_tab tab_type;
+begin
+  update employees set salary=salary*1.1 where department_id=20
+  returning last_name, salary bulk collect into v_tab;
+
+  for i in v_tab.first..v_tab.last loop
+  dbms_output.put_line(v_tab(i).name || '    ' || v_tab(i).salary);
+  end loop;
+end;
+/
+----------------------
+
+declare
+  type record_type is record(name varchar2(30), salary number);
+  --type tab_type is table of record_type;
+  v_tab record_type;
+begin
+  update employees set salary=salary*1.1 where department_id=10
+  returning last_name, salary  into v_tab;
+
+  dbms_output.put_line(v_tab.name || '    ' || v_tab.salary);
+end;
+/
+-----
+declare
+  type record_type is record(name varchar2(30), salary number);
+  --type tab_type is table of record_type;
+  v_tab record_type;
+begin
+  update employees set salary=salary*1.1 where department_id=20
+  returning last_name, salary  into v_tab;
+
+  dbms_output.put_line(v_tab.name || '    ' || v_tab.salary);
+end;
+/
+→에러 : fetch 되는 row의 수가 단일 값이 아니기 때문에 bulk collect into를 사용해야한다.
+
+----------------------------------------------------------------------
+
+begin
+  delete from emp where department_id=10;
+  delete from emp where department_id=20;
+  delete from emp where department_id=30;
+end;
+/
+→실행계획을 공유할 수 없다.
+
+↓↓↓↓	개선
+
+declare
+  type numlist is table of number;
+  v_num numlist := numlist(10, 20, 30);
+begin
+  delete from emp where department_id=v_num(1);
+  dbms_output.put_line(sql%rowcount || ' rows deleted');
+
+  delete from emp where department_id=v_num(2);
+  dbms_output.put_line(sql%rowcount || ' rows deleted');
+
+  delete from emp where department_id=v_num(3);
+  dbms_output.put_line(sql%rowcount || ' rows deleted');
+end;
+/
+→배열을 선언하여 실행계획을 공유한다.
+
+
+↓↓↓↓	개선
+
+declare
+  type numlist is table of number;
+  v_num numlist := numlist(10, 20, 30);
+begin
+  for i in v_num.first..v_num.last loop
+  delete from emp where department_id=v_num(i);
+  dbms_output.put_line(sql%rowcount || ' rows deleted');
+  end loop;
+end;
+/
+# 배열변수 안에 있는 값을 가지고(전제 조건) delete, update를 수행할 때,
+  문맥전환을 줄일 수 있는 방법이 있다.
+
+↓↓
+
+declare
+  type numlist is table of number;
+  v_num numlist := numlist(10, 20, 30);
+begin
+  forall i in v_num.first..v_num.last
+  delete from emp where department_id=v_num(i);	#한꺼번에 sql엔진에 전달
+
+  for i in v_num.first..v_num.last loop  
+  dbms_output.put_line(sql%bulk_rowcount(i) || ' rows deleted');
+  end loop;
+end;
+/
+
+# pl sql > sql 엔진 사이의 문맥 전환을 줄이는 문장 :forall+delete/update/insert
+----------------------
+
+declare
+  type numlist is table of number;
+  v_num numlist := numlist(10, 20, 30, 40, 50);
+begin
+  forall i in v_num.first..v_num.last
+  update emp set salary=salary*1.1 where department_id=v_num(i);
+
+  dbms_output.put_line(sql%rowcount);	# 전체 건수 출력
+
+  for i in v_num.first..v_num.last loop  
+  dbms_output.put_line(sql%bulk_rowcount(i) || ' rows deleted'); # 배열 별 변화 row 수 출력
+  end loop;
+end;
+/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

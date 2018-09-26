@@ -1,0 +1,328 @@
+[문제6]사원번호를 입력값으로 받아서 그 사원의 급여를 10%인상하는 프로그램을 수행하세요.
+화면의 출력되는 결과는 수정 전 월급과 수정 후 월급이 아래와 같이 출력 후 transaction은 rollback 하세요.
+
+
+var b_id number
+
+execute :b_id := 100
+
+
+수정 전 월급 : 24000
+수정 후 월급 : 26400
+
+SQL> drop table emp purge;
+
+Table dropped.
+
+SQL> create table emp as select * from employees;
+
+Table created.
+
+create index emp_id_pk on emp(employee_id);
+
+begin 
+	
+
+		select salary 
+		into :v_sal
+		from employees
+		where employee_id=:b_id;
+		dbms_output.put_line('수정 전 월급 :' ||:v_sal);
+
+		update employees set salary=salary*1.1 where employee_id=:b_id;
+		
+		select salary 
+		into :v_sal
+		from employees
+		where employee_id=:b_id;
+		dbms_output.put_line('수정 후 월급 : '||:v_sal);
+		
+end;
+/
+rollback;
+
+-- 문제점 : 똑같은 문이 일어나는데 테이블을 새로 만든거라서 index를 만들어줘서 해야 빨리 만들어 진다.
+   그리고 변경된 값을 바로 불러 낼 수 있는 방법을 사용하기 위해서 PL/SQL을 사용한다.
+
+
+begin 
+	
+
+		select salary 
+		into :v_sal
+		from employees
+		where employee_id=:b_id;
+
+		dbms_output.put_line('수정 전 월급 :' ||:v_sal);
+
+		update employees 
+		set salary=salary*1.1 
+		where employee_id=:b_id
+		returning salary into v_sal; -- 암시적 cursor에서 fetch를 하는 기능을 얘기 한다. (수정된 값을 바로 확인을 할 수 있다.) DML에 사용하는 절이다.
+		
+		dbms_output.put_line('수정 후 월급 : '||:v_sal);
+		
+end;
+/
+rollback;
+
+------------------------------------------------------------------------------------------------------------------------------------------
+
+declare
+	v_name	emp.last_name%type;
+
+begin 
+	
+
+		select salary 
+		into :v_sal
+		from employees
+		where employee_id=:b_id;
+
+		dbms_output.put_line('수정 전 월급 :' ||:v_sal);
+
+		update employees 
+		set salary=salary*1.1 
+		where employee_id=:b_id
+		returning last_name,salary into v_name,:v_sal; 
+
+		dbms_output.put_line('수정 후 월급 : '||:v_sal);
+		
+end;
+/
+
+# returing 은 *(아스트릭)은 불가하고 행렬을 하나하나 써야한다. returning 에서 받는 값은 1row씩만 받을 수 있다.
+
+# 조건 제어문 
+- true / false
+- boolean (True/False) -- 이외값은 들어가는 것이 불가능하다.
+
+declare 
+	v_flag boolean := true;
+begin
+	if v_flag then
+		dbms_output.put_line('참');
+	end if;
+end;
+/
+
+declare 
+	v_flag boolean := false;
+begin
+	if v_flag then
+		dbms_output.put_line('거짓');
+	end if;
+end;
+/
+
+--------------------------------------------------
+ 
+declare  
+	v_flag boolean := false;
+begin
+	if v_flag then
+		dbms_output.put_line('참');
+	else
+		dbms_output.put_line('거짓');
+	end if;
+end;
+/
+
+# if 문
+
+if 조건 then
+	참값
+elsif 조건 then
+	참값
+elsif 조건 then -- 원하는 만큼 elsif 가능
+	참값
+else
+	기본값
+end if; -- if값 종료
+
+# 비교연산자 
+
+x < y : x가 y보다 작다
+x > y
+x = y
+x != y
+x >= y
+x <= y
+
+논리연산자 - and, or , not
+
+null 비교 - is null, is not null
+
+예)
+
+x:=1
+y:= null
+
+if x=y then
+	......
+else
+	......
+end if;
+
+# 조건 제어문은 무조건 TRUE/FALSE만 되기 때문에 1과 null을 비교했을 시 FALSE값으로 들어가게 된다.
+
+# case 표현식
+
+v_a := upper('a') : 프로시저문에서 사용가능하다.
+v_sal := sum(v_salary); 프로시저문에서 사용불가능하다.
+v_flag := decode(....); 사용불가
+v_flag := case(....); 사용가능하다.
+
+declare
+
+	v_grade char(1) := upper('c');
+	v_appraisal varchar2(30);
+	
+begin
+	v_appraisal := case v_grade when 'A' then '참잘했어요'
+				    when 'B' then '잘했어요'
+				    when 'C' then '다음에 잘해요'
+				    else '니가 사람이야!!'
+			end;
+	dbms_output.put_line('등급은'||v_grade||' 평가는 '||v_appraisal);
+end;
+/
+
+## case 기준 값 when 조건절 then 실행 값 end; 
+
+
+# 같다 외에 비교연산자를 사용하려면 when 안에 값을 넣어서 사용한다.
+
+(예)
+declare
+
+	v_grade char(1) := upper('c');
+	v_appraisal varchar2(30);
+	
+begin
+	v_appraisal := case  when v_grade >= 'A' then '참잘했어요'
+			     when v_grade in('B','C') then '잘했어요'
+			     when v_grade 'D' then '다음에 잘해요'
+			     else '니가 사람이야!!'
+			end;
+	dbms_output.put_line('등급은'||v_grade||' 평가는 '||v_appraisal);
+end;
+/
+
+# if 문처럼 case를 쓰고 싶은 경우
+
+<case 문>
+
+case 조건
+	when 비교1 then 참값 1
+	when 비교2 then 참값 2
+	else 
+		기본값
+
+end case; 
+
+
+# 반복문
+
+loop문 - 반드시 멈춤이란 기능을 해줘야 한다. 하지않으면 무한 loop로 인해 cpu가 퍼진다. <기본 loop>
+
+declare
+	i number := 1;
+begin
+	loop
+		
+		dbms_output.put_line(i);
+		i := i+1;
+		if i > 10 then	
+			exit; -- 반복문에서 사용하는 문, loop구조에서만 사용하다.(반복문), 루프문에서 빠져나올수 있는 값
+		end if;
+	end loop;
+end;
+/
+
+-- 반복되는 값이 위치가 다르면 loop 결과 값이 다르다.
+
+declare
+	i number := 1;
+begin
+	loop
+		
+		dbms_output.put_line(i);
+		if i > 10 then	
+		i := i+1;		
+			exit; 		
+		end if;
+		i := i+1;
+	end loop;
+end;
+/
+
+# while loop 문 - 조건을 먼저 물어본 후 loop 를 수행한다. 
+
+declare
+	i number := 1;
+begin
+	while i <= 10 loop
+		dbms_output.put_line(i);
+		i := i+1;
+	end loop;
+end;
+/
+
+declare
+	i number := 1;
+begin
+	while i <= 10 loop
+		dbms_output.put_line(i);
+		i := i+1;
+		if i = 5 then
+			exit;
+		end if;
+	end loop;
+end;
+/
+
+# for 문 - 선언변수가 자동으로 선언 되므로 declare에서 선언하면 안된다. for 선언변수 in 시작..끝 loop  end loop; for도 exit는 가능하다.
+
+begin
+	for i in 1..10 loop -- 1씩 증가한다.
+		dbms_output.put_line(i);
+	end loop;
+end;
+/
+
+★ 주의 : for 문에서는 1씩만 증가 가능하기 때문에 따로 할당대상을 넣으면 오류가 뜬다.
+
+begin 
+	for i in 1..10 loop 
+		dbms_output.put_line(i);
+		i := i+3 -----오류
+	end loop;
+end;
+/
+
+declare
+	v_start number := 1;
+	v_end number := 10; -- 만약 변수에 null 값을 넣는다면 오류가 생긴다 . v_end number; -- 오류가 생긴다.
+
+begin
+	for i in v_start..v_end loop
+		dbms_output.put_line(i);
+	end loop;
+end;
+/
+
+★ for은 반드시 범위를 지정해줘야한다.!
+
+# 값을 거꾸로 내고 싶다면 reverse를 사용한다.
+
+declare
+	v_start number := 1;
+	v_end number := 10;
+
+begin
+	for i in reverse v_start..v_end loop -- i: count변수는 무조건 for문 안에서만 사용하고 다른곳에선 사용이 불가능 하다.
+		dbms_output.put_line(i);
+	end loop;
+end;
+/

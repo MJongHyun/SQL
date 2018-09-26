@@ -1,0 +1,293 @@
+---17일차는 노트----
+
+tablespace을 통해 업무별로 나눠져 있다. (oracle만 가능) ---유지보수 편리
+
+# DBA SESSION
+
+select * 
+from v$sql -- dba 만 볼 수 있는 뷰,sql문장이 얼마나 만들어 있는지 확인가능
+where sql_text like 'select * from emp%' -- 이 패턴의 문장 검색 , 여기 select를 썻으니까 select문 검색
+and sql_text not like '%v$sql%'; -- shared pool 안의 library cache에 있는 select문 검색 , v$가 sql문 view 
+
+'%emp%' -- 모든 emp 관련 검색값 나옴
+
+
+-- 실행계획 확인 방법
+select *
+from v$sql_plan
+where sql_id=''; -- 제한을 해서 본다. 즉, sql 아이디를 복사
+
+select * from table(dbms_xplan.display_cursor('')); --편하게 보는 방법. 
+
+-- 들여쓰기가 된 것부터 해석함
+--Predicate Information (identified by operation id):-- 조건부 술어 부분과 operation 각 앞 번호와 mapping 해서 본다.
+
+예) |*  1 |  TABLE ACCESS FULL| EMP  |     1 |   133 |     3   (0)| 00:00:01 |  -- 보통 FULL 이 나오면 FILTER로 찾아야 한다라는걸 알 수 있다.
+      1 - filter("EMPLOYEE_ID"=100) --filter : 이값이 어느 위치에 있는지 모를 때 다 찾아 보는거, 만약 찾더라도 끝까지 찾아본다. 또나올수도 있기 때문에.
+			            access : 어느 위치에 있는지 안다 . 즉, rowid를 안다.
+   - dynamic sampling used for this statement (level=2) 
+-- dynamic sampling: 통계정보를 쓰지 않았을 때 동적으로 움직이는 것을 의미 (sql문 수행시 무조건 통계정보가 필요하기 때문, 모집단)
+-- 통계정보는 무조건 수집(표본)을 해야한다. 
+
+invalidations - 무효화
+parse_calls - parse 갯수
+pasing_schema_name - 어떤 user 가 문장을 던졌는지 확인
+object_status - 이 lco에 대한 상태정보가 무효화인지 유효화인지 확인
+
+
+alter system flush shared_pool; -- cache 안의 내용을 모두 없애 겠다는 것 (3번정도 하는 것이 좋다), 이걸 하는건 지금부터 hard parsing하는 것을 의미.
+			    
+
+# HR SESSION
+
+drop table emp purge;
+
+create table emp 
+as select * from employees;--1
+select * from emp where employee_id=100;--2
+
+# 통계 수집
+
+select num_rows,blocks,avg_row_len -- num_rows: 전체 rows 수 , blocks: block 수, avg_row_len: 평균 row 길이
+from user_tables -- 통계정보를 확인 할 수 있는 테이블
+where table_name='EMP';
+
+select num_rows,blocks,avg_row_len
+from dba_tables -- dba에서 확인하고 싶다면.
+where table_name='EMP';
+
+select * from user_tab_privs; -- object 권한 확인
+
+DBMS_STATS -- 통계 수집 package 의미
+
+exec dbms_stats.gather_table_stats('hr','emp'); -- 통계수집 ('유저이름','테이블이름')
+
+
+
+# 다시 dba 에서
+
+select * 
+from v$sql 
+where sql_text like 'select * from emp%' 
+and sql_text not like '%v$sql%';
+
+object_status 가 invaild로 안된 이유 : letch가 하나 이기 때문에 (oracle 하나만 관련된 문장을 검색해야 하기 때문에, 이거 할때 다른 불편함이 생기기 때문에 천천히 생기라는 것을 의미)
+
+exec dbms_stats.gather_table_stats('hr','emp',no_invalidate=>False); -- 해결(바로 보는방법),즉시 무효화 하는 option을 써야함
+						                -- 주의 : 다른 sql 사용할 시 오류가 날수 있다.
+
+object_status 가 invaild로 되어있음
+
+무효화가 된 값 LAST_LOAD_TIME이 현재 시간과 다르다.
+
+# 무효화를 유효화 하는방법
+
+해당 무효화 관련 문장을 다시 실행하면 vaild로 바뀐다.
+ LAST_LOAD_TIME -- 실행 계획까지 load된 시간을 의미, 문장을 친 시간이 아니다.
+LCO 에는 무효화 된 값도 존재되어 있다. 어차피 hard parsing은 실행되겠지만 똑같은 select문이 들어오면 메모리 할당을 줄일 수 있기 때문에. 그래서 first_node_time에는 예전 값이 존재하는 것이다.
+
+drop table emp purge;
+
+-- drop을 하더라도 lco에 값은 살아있다. object는 novaildate로 되어있다.
+
+다시 테이블을 만들고 아까와 같이 명령문을 수행하면 문장은 하나로 계속 나오고 first_load_time은 아까 아침에 했던 처음 로드했던 시간, 
+last_load_time은 현재시간으로 나와있다.
+
+# HR
+
+select * from emp where employee_id=100; -- 이 값을 좀더 좋게 할 방법 : index생성
+
+create index emp_id_ix
+on emp(employee_id);
+
+인덱스를 만들면 바로 invalid 나오는 것을 알 수 있다. 
+
+select * 
+from v$sql
+where sql_text like 'select * from emp%'
+and sql_text not like '%v$sql%'; -- 여기서 확인
+
+기존 명령문을 실행 후 확인하면 index option으로 바뀐걸로 확인할 수 있다.
+
+그리고 위 문장으로 확인하면 parse_calls를 확인 할 수 있는데 자주 사용하는 횟수를 확인 할 수 있다.
+예상) parse_calls 횟수가 적으면 메모리 부족할시 지우는 문장을 선택할 때 이용한다고 생각한다.
+
+# EXPLAIN PLAN - optimizer 가 sql문 실행에 사용하는 실행 계획정보를 확인 할 수 있다.
+                          - plan_table
+                          - @%ORACLE_HOME%\rdbms\admin\utlxplan.sql
+                          - 단, 10g버젼 이후엔 자동 설치가 되어있다.
+select *
+from all_synonyms -- 동의어 (all 남 내가 만든거 확인,dba,user 각각 확인 가능)
+where synonym_name='PLAN_TABLE';-- explain table 생성확인.
+
+synonyms-- 긴객체의 이름은 짧게 만드는것. (별명)
+
+-- HR세션
+
+explain plan for select * from emp where employee_id=100;
+
+explain plan for 쿼리문장 
+
+select * from sys.plan_table$;
+select * from plan_table; -- 보기 힘듬 (긴이름을 짧게 만든 것: synonym)
+
+select * from table(dbms_xplan.display(null,null,'typical'));-- typical: 일반적으로 보여준다. 보기쉽게 보여준다.
+select * from table(dbms_xplan.display(null,null,'basic'));
+
+f10의 의미: explain plan for 이 돌아 가는 것과 같다.
+
+sql plus 에선 linesize를 조정해주고 값을 쳐야 한번에 볼수 있다.
+
+|*  2 |   INDEX RANGE SCAN          | EMP_ID_IX |     1 |       |     1   (0)| 00:00:01 | -- range scan 했다는 것은 loot - branch - leaf 
+   2 - access("EMPLOYEE_ID"=100) -- access-이값은 어느 block에 있는지를 위치로 알 수 있다. (rowid를 알수 있기 때문) 
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP       |     1 |    69 |     2   (0)| 00:00:01 | -- leaf 값을 index에서 rowid를 찾아 access 하는 것을 의미한다.
+
+id 앞에 * 있다는 건 조건부 술어에 무조건 표현되있다는 것을 의미한다.
+
+drop index emp_id_ix; -- index 삭제
+explain plan for select * from emp where employee_id=100;
+select * from table(dbms_xplan.display(null,null,'typical')); -- filter로 나온다.
+
+# full table scan
+
+- 많은 양의 데이터를 검색할 때 유용하다.
+- multi block i/o 발생 - 한번에 몇개씩 불러들이냐를 따짐.extent 개념.으로 가져감
+
+DBA 에서
+select * from dba_segments where segment_name='EMP'; - 표 확인하면 EXTENTS 1개 당 BLOCK 수는 8개이다. 65536 (64K)
+show parameter db;-- db_file_multiblock_read_count--multiblock 발생 시 한번에 읽어 낼수 있는 갯수       -- integer     128
+
+# multiblock은 한번에 128개를 읽을수 있지만 extent 크기에 따라 읽어 진다
+extent 가 8개 즉 64k 면 8개 씩만 읽을 수 밖에 없다. 권장을 2MB로 함 
+검색할 때는 재사용으로 해서 올려서 검색한다. (메모리 용량을 줄이기 위해서)
+
+-- hr테이블에서만 함
+
+alter session set db_file_multiblock_read_count=128; -- session 에만 적용 시키겠다. 
+
+select * from emp; -- 무조건 full scan
+
+-- full scan을 힌트로 해서 사용하는법 
+
+select /*+ full(e) */* from emp e;
+select /*+ full(e) */ employee_id,last_name from emp e;
+
+select /*+ full(별칭 or 테이블이름) */* from 테이블이름 별칭;
+
+select /*+ full(e) parallel(e,2)*/* from emp e;--parallel(e,2) 2개의 process를 띄워서 어느 부분까지  1.나눠서 처리하는 것.
+ 
+원래는 데이터 버퍼에 올렸다가 cursor 로 올리는데 parallel 인 경우 바로 cursor로 올린다. 2. (direct read라고 함)
+
+parallel 숫자는 cpu의 갯수에 따라 처리를 할수 있는 능력이 달라진다.
+
+# full table scan  - 데이터가 많을 때 사용하는 것이 좋다.
+
+힌트를 쓰는 것은 index scan 도 full scan으로 하게 도와준다.
+
+의도적으로 full scan 을 하려면 힌트로 하는데 힌트로 해서 되지 않는다면 형변환 함수를 이용하여 해결한다.
+
+# rowid scan
+- by user rowid, by index rowid 를 이용하여 소량의 데이터를 검색 할 때 용이하다.
+- single block i/o (root branch leaf 다 하나씩)
+
+select rowid,employee_id from emp;
+select * from emp where rowid='AAAFBAAAEAAAAJ7AAA';
+
+rowid 구성
+#object id #file id# block id # rowslot
+6             3        6             3
+
+# index scan -- index를 만들시 통계정보가 자동으로 만들어진다.
+
+select * from user_ind_columns where table_name='EMP'; -- 테이블의 인덱스를 확인하는 방법
+select * from user_indexes where table_name='EMP'; -- 유저의 인덱스 확인 
+
+1. index unique scan
+- 컬럼에 유일한 값으로 인덱스가 구성되어 있다.
+- 비교연산자는 =(같다) 만 사용할 때
+
+alter table emp add constraint emp_id_pk primary key(employee_id); -- 제약조건
+select * from user_ind_columns where table_name='EMP'; -- primary key 를 하면 unique 인덱스가 생성된다.
+제약조건 이름이 인덱스 이름으로 설정되어 있다.
+
+explain plan for select * from emp where employee_id=100; -- employee_id 가 unique index처리 되있으므로 index unique로 검색이 된다. <(=)으로 되어있으므로.>
+select * from table(dbms_xplan.display(null,null,'typical')); 
+explain plan for select * from emp where employee_id>=100;  -- full scan으로 바뀐다. (100번부터 시작하므로 full scan 으로 바뀐다.)
+explain plan for select * from emp where employee_id<=100; -- 없는 값으로 하면 range scan으로 바뀐다. 그리고 어느정도 범위에 맞으면 range scan으로 바뀐다.
+                                                                             >=200;
+explain plan for select employee_id from emp where employee_id>=100; 
+
+
+explain plan for select * from emp where employee_id>=100; -- table full scan 이유: 한번에 가져오므로 
+					   	    -- index range scan(index full scan) 쓰지 않은  이유: rowid 값에 따라 테이블 값가지러 계속 가야하므로 i/o가 더 발생 하므로
+select * from table(dbms_xplan.display(null,null,'typical')); 
+explain plan for select employee_id from emp where employee_id>=100; -- index range scan(index full scan) 이유: employee_id 즉, index만 바라보면 되기 때문에 range로 해결하면된다.
+                                                                                                          -- table full scan 쓰지 않는 이유: index으로 인해서 테이블로 가는 값은 필요가 없으므로
+select * from table(dbms_xplan.display(null,null,'typical'));
+
+# 데이터 양에 따라서도 달라질 수 있기 때문에 데이터 양도 생각을 해야한다.
+# 즉, select 에서 값을 가져올 때도 scan 하는것을 생각해서 index를 하거나 안하는것도 결정해야한다,
+
+2. index range scan
+-index leaf block에서 필요한 범위만 스캔하는 방식
+-non_unique_index 는 무조건 range scan
+-one plus one scan 방식 -- leaf block은 꼭 한번더 scan을 한다.
+
+create index emp_dept_idx
+on emp(department_id); -- 중복성이 들어오는 column이다. non-unique index 생성
+
+explain plan for select * from emp where department_id=10; -- 10번을 찾았더라도 또 10번이 있을 수 있어서 계속 찾게된다.
+select * from table(dbms_xplan.display(null,null,'typical')); 
+
+수직(root-branch-leaf)의 일정부분 수평의 일정부분만 스캔하는 것을 의미한다.
+
+select * from user_indexes where table_name='EMP'; -- 인덱스 확인.
+
+3. inlist iterator
+- index를 반복하는 의미. 즉, root-branch-leaf를 반복한다는 의미이다.
+- 값의 범위가 떨어 져있다면 inlist iterator를 사용하는 것이 좋다. ( range를 하면 범위 까지 계속 찾아야하므로)
+- 실행 계획을 분리하고자 할 때에도 사용된다. 
+- 통계수집을 하면 히스토그램이 생성되서 (optimizer 에서) scan을 결정한다.
+
+explain plan for 
+select * from emp where employee_id in(100,200);
+
+select * from table(dbms_xplan.display(null,null,'typical')); 
+
+| Id  | Operation                    | Name      | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |           |     2 |   138 |     2   (0)| 00:00:01 |
+|   1 |  INLIST ITERATOR             |           |       |       |            |          | 
+|   2 |   TABLE ACCESS BY INDEX ROWID| EMP       |     2 |   138 |     2   (0)| 00:00:01 |
+|*  3 |    INDEX UNIQUE SCAN         | EMP_ID_PK |     2 |       |     1   (0)| 00:00:01 |
+
+(in 연산자와 or 연산자를 쓰면 밑의 식과 같다.)
+
+select * from emp where employee_id = 100 -- i/o 4번
+union all
+select * from emp where employee_id = 200; -- i/o 4번
+
+만약 101 102 103 을 찾는다 가정하면. 12번의 i/o 발생  -- range로 바꿔줘야 한다.
+select * from emp where employee_id = 100 
+union all -- 실행계획분리 ★
+select * from emp where employee_id = 101 
+union all
+select * from emp where employee_id = 102;
+
+<수정>
+
+explain plan for 
+select * from emp where employee_id between 100 and 102;
+
+값 사이사이 값이 없다면 between 으로 하고 만약 소수점과 같이 존재 한다면 inlist iterator을 사용하는것이 좋다.
+반드시 column 값을 먼저 확인해서 어떻게 하는것이 좋을지 판단을 해야한다.
+
+select * from user_tables;
+
+LAST_ANALYZED - 통계수집이 되어있는지 확인가능, 최근 언제 했는지도 알수 있다.
+통계수집은 DBA에게 요청해서 해야한다.
+요청한 값으로 해주지 않는다면 힌트를 써서 해결을 해야한다.
+
+buffer에서 값을 cursor로 옮겨 activeset 결과를 올린다.
+memory access 가 효율적이기 때문에 (다른사람들도 쓰기 때문에 disk에서 쓰는것은 좋지 않다.) 그래서 paralled 가 있더라도 buffer(serial) 로 옮긴다.
+

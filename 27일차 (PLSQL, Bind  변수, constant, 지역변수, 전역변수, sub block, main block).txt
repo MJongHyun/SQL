@@ -1,0 +1,514 @@
+PLSQL (Procedure Language Structured Query Language)
+
+-구조적인 언어 (SQL 단어) 를 단점을 보완하기 위한 언어 
+
+왜 PLSQL을 해야 하는가.
+
+# DBA SESSION
+
+alter system flush shared_pool; -- share pool 비우기
+
+select sql_id, sql_text, parse_calls, executions
+from v$sql
+where sql_text like '%employees%'
+and sql_text not like '%v$sql%';
+
+# HR SESSION
+
+select * from employees where employee_id = 100;
+select * from employees where employee_id = 101;
+select * from employees where employee_id = 102;
+
+수행 후 위 DBA에서 확인
+ -- 계속 수행하기 때문에 변수처리를 하고 싶으나 sql문을 변수처리를 하는 것은 힘들다 .
+      그래서 절차적 언어 수행하기 위해 PL/SQL 사용
+
+# SQL PLUS 실행
+
+conn hr/hr
+var  b_id number 
+print b_id
+	
+# Bind 변수 (var)
+
+var - 변수선언,sql Tool 명령어 이다.
+print - 출력,sql Tool 명령어 이다.
+b_id (number 타입엔 size를 적지 않는다, varchar2)
+
+
+execute :b_id  :=100
+
+★ bind 함수는 사용할 때 : 변수이름 := (값을 입력) 한다.
+
+확인
+
+print b_id 
+
+var 변수이름 타입
+
+# ★★ bind 변수는 session 창을 닫기 전까지는 유지가 된다. / tool 의 종속
+
+select * from employees where employee_id = :b_id ;
+
+
+EMPLOYEE_ID FIRST_NAME                               LAST_NAME                                       EMAIL
+----------- ---------------------------------------- -------------------------------------------------- -----------------
+HIRE_DAT JOB_ID                   SALARY COMMISSION_PCT MANAGER_ID DEPARTMENT_ID
+-------- -------------------- ---------- -------------- ---------- -------------
+        100 Steven                                   King                                               SKING
+03/06/17 AD_PRES                   24000                                      90
+
+이값을 server로 보내서 처리할 때 parsing 후 bind 하는 과정을 보여주는 것이다.
+
+# DBA SESSION 
+
+select sql_id, sql_text, parse_calls, executions
+from v$sql
+where sql_text like '%employees%'
+and sql_text not like '%v$sql%'; -- bind 문장이 생성되어 있다.
+
+
+#HR SESSION
+
+ exec :b_id := 200 - 200으로 변화
+
+ print b_id
+
+  B_ID
+------
+   200
+
+select * from employees where employee_id = :b_id ;
+
+select * from employees where employee_id = :b_id ; -- 위의 문장과 같이 그대로 실행
+
+# DBA SESSION
+
+select sql_id, sql_text, parse_calls, executions
+from v$sql
+where sql_text like '%employees%'
+and sql_text not like '%v$sql%'; -- 값을 바꿨지만 추가되는것은 똑같이 추가 된 것을 알 수 있다.
+
+#HR SESSION
+
+var b_name varchar2(30) -- 문자 type은 반드시 size를 표현 해줘야 한다.
+exec :b_name :='King' -- 문자 입력시 는 '' 반드시 해준다.
+print b_name
+
+select * from employees where last_name = :b_name;
+
+v$sql 확인시 새로운 값이 추가 되있는 것을 확인 할 수 있다.
+
+exec :b_name :='Grant'
+select * from employees where last_name = :b_name; --GRANT로 변환 된것을 알 수 있다. (King은 없어지고 Grant로 변화 된 것을 알 수 있다.)
+
+v$sql - 수행값이 soft로 유도되고 있는 것을 확인할 수 있다.
+
+# 선언이 되지 않는 경우
+
+var v_id -- type을 쓰지 않아서 불가능
+var v_id number(2) -- number에 size를 적어서 오류가 난다.
+var v_id char -- size를 써주는게 좋다. 안 썼을땐 자동으로 1로 잡힌다.
+var v_id varchar2() -- size를 반드시 적어줘야 한다.
+
+select * from nls_database_parameters;
+NLS_CHARACTERSET -AL32UTF8 (DB character set) - DB안에 문자를 저장할 때 문자체계 character set을 의미 한다.
+DB 안에 문자를 쓸 때 (char, varchar2, long, clob은 character set에 영향을 줌) 사용되는 코드를 의미한다.
+
+ko16mswin949(자국 character set) - 한글, 영어, 한자 , 일어 2BYTE (char, varchar2, long, clob에 영향을 준다.)
+AL32UTF8 - 유니코드 (전세계의 출판되는 언어는 다 받을 수 있다. (입력가능)), 한글이 3BYTE
+
+char set에 맞지 않는 문자를 쓸 경우 값을 ?로 받아 들인다.
+
+★ 조건 ko16mswin949  (자국 character set) 으로 되어있을 때
+
+NLS_NCHAR_CHARACTERSET - AL16UTF16 (national set, 유니코드)
+AL16UTF16 - 위 CHARCTERSET에 맞는 값을 쓰되 다른 값을 받으면 별도의 컬럼을 만들어서 (nchar, nvarchar2, nclob) 이값으로 받아서 유니코드로 적용 시킨다.
+nchar, nvarchar2, nclob
+
+CHARACTERSET은 절대로 수정이 불가능 하다.
+
+# PL/SQL 프로그램은 블록 구조 형식이다.
+
+
+익명구조 (객체가 아니다)
+
+declare(선언부) 선택 <필수가 아니다.> - 변수선언, 명시적 커서 선언, 사용자가 정의한 예외사항처리 선언
+
+begin(실행부) <필수> - 로직구현, SQL문처리 
+
+exception(예외사항처리) 선택 - 실행부분에서 발생한 오류를 처리
+
+end;(프로그램 종료) <필수>
+/ -- 이 프로그램을 실행하겠다라는 표시
+
+print : BIND 변수를 출력하는 명령어
+ 
+begin 
+	dbms_output.put_line('문종현');   -- 자주 사용할 객체들의 모임
+	dbms_output.put_line('오늘도 행복하자!!');	
+end;
+/
+
+
+package - 관련성이 있는 프로그램들의 집합
+put_line - 한줄씩 출력 기능
+
+#sql deveploper 실행 시 
+
+메뉴 -> 보기 -> DBMS 출력 클릭
+출력 값에서 + 클릭(접속을 꼭 해야한다.!)  한 후 다시 실행하면 값이 나온다.
+ ★ 접속과 출력하는곳을 같이 해야한다.
++ 옆에 값에 지우개 비슷한 부분을 누르면 지워진다.
+
+# SQL PLUS
+
+sql plus 에서는 set serveroutput on 을 실행해야 PL/SQL 실행 결과 값이 나온다.
+set serveroutput on
+
+- 오렌지 tool 에서 환경설정 들어가면 serveroutput 이라는 부분을 체크하면 결과값이 나온다.
+
+# l - 마지막에 사용한 PL/SQL 값이 생성된다. (PLUS에서만 가능)
+
+l 을 누른 후 다시 / 를 누르면 실행이 된다.
+
+declare
+	/* local variable, private variable (지역변수) */ -- 프로그램 안에서만 사용하는 변수 
+	/* scalar data type(단일값만 보유하는 변수)  */
+	v_a number(7); -- 변수선언시 하나씩만 선언이 가능하다 ( 한번에 두개 이상 불가능 하다.)
+	v_b number(3) := 100;
+	v_c varchar2(10) not null := 'plsql'; -- 변수에 제약조건 (not null만 가능)을 걸 수 있다. not null 제약조건을 걸었을 시 초기값을 넣지 않으면 오류가 뜬다.
+	v_d constant date default sysdate;
+begin
+	v_a := 200; -- 선언한 변수는 대체가 가능하다.
+	dbms_output.put_line('v_a 변수에 있는 값은 ' || v_a);
+	dbms_output.put_line('v_b 변수에 있는 값은 ' || v_b);
+	dbms_output.put_line('v_a 변수에 있는 값은 ' || v_c);
+  	dbms_output.put_line('v_a 변수에 있는 값은 ' || v_d);
+end;
+/
+
+★ 바인드 에서는 number size를 선언을 할 수 없지만 다른 지역변수에선 size를 선언할 수 있다.
+    문자 || NULL  을 하더라도 문자로 나온다.
+ 
+declare 에서 변수이름 type := 입력 할때
+입력에는 type를 맞춰야 한다.
+단 number 형식에 '' 를 써도 되겠지만 형변환이 되기 때문에 좋지 않다.
+할당 연산자 (:=) 과 default 는 같다. 
+constant(상수를 선언하는 기능)
+
+★ 주의 할 점 : constant를 선언한 값은 무조건으로 다른값으로 대체할 수 가 없다. 즉 begin에 v_d := sysdate+1 은 불가능하다.
+              	      상수값을 선언한 값은 초기값을 무조건 설정해줘야 한다.
+	      하지만 dbms_output.put_line('v_a 변수에 있는 값은 ' || (v_d+10)); -- 안에서는 가능하다.
+
+	dbms_output.put_line('v_b 변수에 있는 값은 ' || v_b+100); -- 오류가 난다. 
+	이유 : 문자 || 숫자 -> 암시적 형변환이 되어 숫자도 문자형식으로 바뀐다 따라서 100은 숫자이기 때문에 numeric 에러가 발생한다.
+	따라서 괄호를 사용해서 우선순위를 만들어서 해줘야한다.
+	<수정> dbms_output.put_line('v_b 변수에 있는 값은 ' || (v_b+100));
+
+변수 - 저장을 위해 필요 
+bind variable : global variable , public variable, 전역변수 (프로그램 밖에서도 사용할 수 있도록 하는 변수)
+
+declare
+ 	v_sal number := 1000;
+	v_comm number := 100;
+	v_total number;
+begin 
+	v_total := v_sal + v_comm;
+	dbms_output.put_line(v_total);
+end;
+/
+
+# local 변수는 / 한순간 끝나는 것을 의미한다.
+
+select * from employees where salary > v_total; -- 불가하다
+
+해결
+
+var b_total number
+
+declare
+ 	v_sal number := 1000;
+	v_comm number := 100;
+	v_total number;
+begin 
+	:b_total := v_sal + v_comm; -- bind 변수를 사용할 시 반드시 앞에 :(콜론)을 사용해야한다.
+	dbms_output.put_line(:b_total);
+end;
+/
+--- 프로그램안에서 프로그램 바깥으로 전달한 것을 의미한다.
+
+
+# bind 변수는 반드시 프로그램 바깥에서 선언을 해야한다. declare 절에선 사용이 불가능 하다. (bind는 session 이 끝날 때 까지 계속 유지가 된다.)
+-- bind 변수 테스트시는 spl + 에서 한다.
+
+★★ bind 변수의 목적: 1. 프로그램 안에서 바깥으로 전달하는 목적 2. 입력의 대한 기능 (프로그램 안에 입력 값을 넣을 수 있다.)
+
+var b_total number -- 바인드 변수 선언 (전달할 목적 return)
+var b_sal number -- 입력변수처럼 실행
+var b_comm number
+
+exec :b_sal := 10000
+exec :b_comm := 1000
+
+declare
+ 	v_sal number := :b_sal;
+	v_comm number := :b_comm;
+begin 
+	:b_total := v_sal + v_comm; -- bind 변수를 사용할 시 반드시 앞에 :(콜론)을 사용해야한다.
+	dbms_output.put_line(:b_total);
+end;
+/
+
+
+var b_total number 
+var b_sal number 
+var b_comm number
+
+exec :b_sal := 10000
+exec :b_comm := 1000
+
+declare
+ 	v_sal number := :b_sal;
+	v_comm number := :b_comm;
+begin 
+	:b_total := v_sal + v_comm; 
+	dbms_output.put_line(:b_total);
+end;
+/
+
+★★ package에서 선언된 변수는 프로그램에 끝나더라도 글로벌 변수를 표현할 수 있다.
+
+<복습>
+
+declare
+ 	v_sal number := 1000;
+	v_comm number := 100;
+	v_total number;
+begin 
+	v_total := v_sal + v_comm;
+	dbms_output.put_line(v_total);
+end;
+/
+
+select * from employees where salary > v_total ---- 오류가난다. 로컬변수는 프로그램 안에서만 사용을 해야한다. 로컬변수는 프로그램이 끝나는 / 이후엔 값이 사라지기 때문에 오류가 난다.
+			
+<해결방법> - 전역변수를 만든다. (bind 변수 이용)
+-- 여기서는 전달의 기능을 사용한다.
+var v_total number 
+
+declare
+	v_sal number := 1000;
+	v_comm number := 100;
+begin
+	:v_total := v_sal+v_comm;
+	dbms_output.put_line(:v_total);
+end;
+/
+
+-- 입력에 대한 값 
+
+var b_total number 
+var b_sal number 
+var b_comm number
+
+exec :b_sal := 10000
+exec :b_comm := 1000
+
+declare
+ 	v_sal number := :b_sal;
+	v_comm number := :b_comm;
+begin 
+	:b_total := v_sal + v_comm; 
+	dbms_output.put_line(:b_total);
+end;
+/
+
+<정리>
+
+변수 이름 
+- 무조건 문자로 시작을 해야한다.
+- 문자, 숫자 , 특수문자(_, $, #) 만 포함할 수 있다.
+- 30자 이하의 문자로만 사용해야한다. (문자 숫자 특수문자 포함)
+- 예약어는 사용 못한다. (declare, begin, select .....)
+
+★★★ 변수를 선언시에 not null ,constant 로 지정된 변수에는 초기값을 무조건 할당해야한다.
+          할당연산자는 :=, defalut를 이용하면 된다.
+
+declare
+	v_name varchar2(20);
+begin
+	dbms_output.put_line('my name is : ' || v_name); --문자 || null => 문자 
+	v_name := 'james'; -- 각각 따로 변수로 들어 가는거기 때문에 가능하다.
+	dbms_output.put_line('my name is : ' || v_name);
+	v_name := '홍길동';
+	dbms_output.put_line('my name is : ' || v_name);
+end;
+/
+
+
+# 로컬변수의 또다른 기능 -- 서브블락 생성이 가능하다. (begin 안에 중첩이 가능하다.)
+
+declare
+	v_sal number(8,2) := 60000;
+	v_comm number(8,2) := v_sal * 0.20;
+	v_message varchar2(100) := ' eligible for commission';	
+begin
+	declare
+		v_sal number(8,2) := 50000;
+		v_comm number(8,2) := 0;
+		v_total number(8,2) := v_sal +v_comm;
+	begin
+		dbms_output.put_line(v_total);
+	end;
+
+
+end;
+/
+
+50000
+
+-- block이 다르면 변수가 이름이 같더라도 다르게 적용이 된다. (서브블락 메인블락에선 다르게 나타난다.)
+
+# 만약 서브블락 declare 값이 없다면 (주석처리)
+
+declare
+	v_sal number(8,2) := 60000;
+	v_comm number(8,2) := v_sal * 0.20;
+	v_message varchar2(100) := ' eligible for commission';	
+begin
+	declare
+		--v_sal number(8,2) := 60000;
+		--v_comm number(8,2) := v_sal * 0.20;
+		v_total number(8,2) := v_sal +v_comm;
+	begin
+		dbms_output.put_line(v_total);
+	end;
+
+
+end;
+/
+
+60000
+
+처음은 같은 block에서 찾다가 없으면 메인block 값에서 찾아서 값을 나타낸다.
+
+주의 : 서브블락 안에 /를 넣으면 오류가 뜬다. (안에 있는 값은 자동으로 돌아가기 때문에 사용하면 안된다.)
+
+declare
+	v_sal number(8,2) := 60000;
+	v_comm number(8,2) := v_sal * 0.20;
+	v_message varchar2(100) := ' eligible for commission';	
+begin
+	declare
+		v_sal number(8,2) := 50000;
+		v_comm number(8,2) := 0;
+		v_total number(8,2) := v_sal +v_comm;
+	begin
+		dbms_output.put_line(v_total);
+		dbms_output.put_line(v_sal);
+		dbms_output.put_line(v_comm);
+		dbms_output.put_line(v_message); -- 수명이 살아있기 때문에 가능하다.
+
+	end;
+		dbms_output.put_line(v_sal);
+		dbms_output.put_line(v_comm);
+		dbms_output.put_line(v_message);
+		dbms_output.put_line(v_total); -- 오류가 난다 . 이유: v_total은 서브 block에서 선언이 된 값인데 메인block엔 값이 없으므로 가져올수 없다.
+							★★ 서브블락에 없으면 메인블락에 있는 값을 가져올수 있다,
+							       하지만 서브블락에서 선언한 값을 메인블락에서 가져오는 것은 불가능하다. (이미 수명을 다했기 때문에)
+
+end;
+/
+
+-- 결국 값을 가져오고 싶다면 bind 변수로 선언을 해서 값을 가져와야 한다.
+
+declare
+	v_sal number(8,2) := 60000;
+	v_comm number(8,2) := v_sal * 0.20;
+	v_message varchar2(100) := ' eligible for commission';	
+begin
+	declare
+		v_sal number(8,2) := 50000;
+		v_comm number(8,2) := 0;
+		v_total number(8,2) := v_sal +v_comm;
+	begin
+		v_message := 'clerk not ' || v_message; -- 'clecrk not eligible for commission'
+		dbms_output.put_line(v_total);
+		dbms_output.put_line(v_sal);
+		dbms_output.put_line(v_comm);
+		dbms_output.put_line(v_message);
+	end;
+		dbms_output.put_line(v_sal);
+		dbms_output.put_line(v_comm);
+		dbms_output.put_line(v_message);  -- ★ 'clecrk not eligible for commission' (이미 서브에서 이렇게 선언했기 때문에 서브와 똑같은 값으로 실행이 된다.)
+		
+
+end;
+/
+
+# 서브 블락 절에서 메인 블락절을 불러오고 싶을 때 ( 변수의 이름이 같을 때 ) 해결 -- 레이블을 단다. 맨위에 <<>> 사용 
+   레이블 : 메인블락과 서브블락의 구분자로 사용, 레이블이름.변수이름 -> 레이블이 있는 값을 가져온다.
+
+★★★결국엔 순서대로 절차를 가는거네 
+
+<<outer>>
+declare
+	v_sal number(8,2) := 60000;
+	v_comm number(8,2) := v_sal * 0.20;
+	v_message varchar2(100) := ' eligible for commission';	
+begin
+	declare
+		v_sal number(8,2) := 50000;
+		v_comm number(8,2) := 0;
+		v_total number(8,2) := v_sal +v_comm;
+	begin
+		outer.v_sal := 70000; -- 서브블락 안에서 메인블락의 변수 값을 새롭게 선언하는 것도 가능하다. (레이블을 통해서만 가능하다.)
+		v_message := 'clerk not ' || v_message; 
+		dbms_output.put_line(v_total);
+		dbms_output.put_line(outer.v_sal);
+		dbms_output.put_line(v_comm);
+		dbms_output.put_line(v_message);
+	end;
+		dbms_output.put_line(v_sal); -- 이미 서브블락에서 사용을 했으므로 값이 바뀌지 않는다. ( 서브블락이 끝나고 참조를 하기 때문에 값이 바뀌지 않는다.) 12000이다.
+		dbms_output.put_line(v_comm); -- ★ 이미 메인블락에서 선언한 값에서 계산을 하기 때문에 서브에서 바꿨다 하더라도 바뀌지 않는다.
+		dbms_output.put_line(v_message);  
+	
+
+end;
+/
+
+# 만약 메인값에서 값을 추가하면 값이 바뀐다.
+
+<<outer>>
+declare -- prohibit
+	v_sal number(8,2) := 60000;
+	v_comm number(8,2) := v_sal * 0.20;
+	v_message varchar2(100) := ' eligible for commission';	
+begin
+	declare -- local
+		v_sal number(8,2) := 50000;
+		v_comm number(8,2) := 0;
+		v_total number(8,2) := v_sal +v_comm;
+	begin
+		outer.v_sal := 70000; 
+		v_message := 'clerk not ' || v_message; 
+		dbms_output.put_line(v_total); - 50000
+		dbms_output.put_line(outer.v_sal); - 70000
+		dbms_output.put_line(v_comm); - 0
+		dbms_output.put_line(v_message); - 'cleck not eligible for commission'
+	end;
+		v_comm := v_sal *0.20; - 14000 으로 수정
+		dbms_output.put_line(v_sal); - 70000
+		dbms_output.put_line(v_comm);  - 14000
+		dbms_output.put_line(v_message); -'cleck not eligible for commission';  
+	
+
+end;
+/
+
+# 그림그려서 확인해보기 #
+
+-- 디버깅을 할 때 putline을 통해서 확인한다.
+
+

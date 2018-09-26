@@ -1,0 +1,165 @@
+# 값이 있느냐 없느냐를 따질 때, 비교할 때 correlated subquery를 사용한다. -> exists 를 먼저 생각
+
+[문제86]  
+1. department_id, job_id, manager_id 기준으로 총액 급여를 출력
+2. department_id, job_id 기준으로 총액급여출력
+3. department_id 기준으로 총액급여 출력
+4. 전체 총액 급여를 출력
+
+1,2,3,4를 한꺼번에 출력해주세요.
+
+# 값들을 합쳐야 하므로 집합연산자 사용.
+
+select department_id,job_id,manager_id,sum(salary)
+from employees 
+group by department_id,job_id,manager_id
+union all
+select department_id,job_id,null,sum(salary)
+from employees
+group by department_id,job_id
+union all
+select department_id,null,null,sum(salary)
+from employees
+group by department_id
+union all
+select null,null,null,sum(salary)
+from employees;
+
+# group by 연산자!
+
+- 문제점 : employees 테이블이 4번 돌아감
+
+# rollup 연산자 :group by 절에서 지정한 열 리스트를 오른쪽에서 왼쪽으로 한 방향으로 이동하여 그룹화를 만든다.
+
+select department_id,job_id,manager_id,sum(salary)
+from employees 
+group by rollup(department_id,job_id,manager_id);
+
+# cube 연산자 : group by 절에 지정된 가능한 모든 그룹화를 한다. rollup은 항상 포함되어있다. n!+1개
+
+select department_id,job_id,manager_id,sum(salary)
+from employees 
+group by cube(department_id,job_id,manager_id);
+
+group by rollup(a,b,c)
+
+sum(sal)={a,b,c}
+sum(sal)={a,b}
+sum(sal)={a}
+sum(sal)={}
+
+
+group by cube(a,b,c)
+
+sum(sal)={a,b,c}
+sum(sal)={a,b}
+sum(sal)={a,c}
+sum(sal)={b,c}
+sum(sal)={a}
+sum(sal)={b}
+sum(sal)={c}
+sum(sal)={}
+
+[문제87]
+1. department_id,manager_id 기준 급여 총합
+2. department_id,job_id 기준 급여 총합
+1,2 한꺼번에 출력해주세요.
+
+select department_id,manager_id,null,sum(salary)
+from employees 
+group by department_id,manager_id
+union all
+select department_id,null,job_id,sum(salary)
+from employees 
+group by department_id,job_id;
+
+# rollup 이나 cube로 할 수 없는 것은 어쩔 수 없이 union을 사용해야한다. (8i)
+
+-- (9i) 이후 
+# grouping sets 연산자 : 내가 직접 원하는 그룹을 만들 때 사용
+
+select department_id,manager_id,job_id,sum(salary)
+from employees 
+group by grouping sets((department_id,job_id),(department_id,manager_id),());
+
+-- 전체를 구하고 싶다면 () 을 사용하면된다.
+
+[문제88] 년도별로 입사한 인원수, 전체 인원수를 출력해주세요
+
+           2001          2002             2003           2004          2005            2006           2007             2008      총인원수
+---------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+               1                 7                6                 10             29               24               19                11         107
+     
+select max(decode(bb ,'2001',aa)) as "2001",
+      max(decode(bb ,'2002',aa)) as "2002",
+      max(decode(bb ,'2003',aa)) as "2003",
+      max(decode(bb ,'2004',aa))as "2004",
+      max(decode(bb ,'2005',aa)) as "2005",
+      max(decode(bb ,'2006',aa))as "2006",
+      max(decode(bb ,'2007',aa))as "2007",
+      max(decode(bb ,'2008',aa))as "2008",
+      max(decode(bb ,null,aa)) as "총인원수"  -- rollup 전체인 값 구하기
+from(select to_char(hire_date,'yyyy') bb ,count(*) aa
+     from employees
+     group by rollup(to_char(hire_date,'yyyy'))); - 컬럼 하나의 대한 모든 값이 나온것 그래서 2001, 2002, 2003, ..... , 하고 나머지 값이 나온것이다.  
+
+
+# 계층적 검색 지리 : 트리구조 처럼 그리는 것으로 맨 밑으로 갔을 때 그 전 위 값으로 와서 찾는 계속 반복하는 구조.
+
+select employee_id,last_name,manager_id
+from employees
+start with employee_id=100
+connect by prior employee_id=manager_id;
+
+# 계층 검색의 필수 절 : start with - 시작점, connect by prior - 연결고리  <prior (전 단계 인 값 출력)>
+
+select employee_id,last_name,manager_id
+from employees
+start with employee_id=101
+connect by employee_id=prior manager_id;
+
+# prior 의 위치에 따라 top-down 으로 되거나 bottom-up 으로 되는지 알 수 있다.
+
+select last_name
+from employees
+start with employee_id=100
+connect by prior employee_id=manager_id;
+
+# level : 계층을 확인해 주는 함수
+
+select level,last_name
+from employees
+start with employee_id=100
+connect by prior employee_id=manager_id;
+
+# lpad를 통해 계층별로 보여줄 수도 있다.
+select level,lpad(' ',2*level-2,' ')||last_name
+from employees
+start with employee_id=100
+connect by prior employee_id=manager_id;
+
+# sibilings : order by 를 할 경우 계층이 깨질 수 있지만 계층 들 간 알파벳으로 정렬이 가능한 함수
+
+select level,lpad(' ',2*level-2,' ')||last_name
+from employees
+start with employee_id=100
+connect by prior employee_id=manager_id
+order siblings by last_name;
+
+# where 절로 제한 할 경우 where절의 값만 제한된다
+
+select level,lpad(' ',2*level-2,' ')||last_name
+from employees
+where employee_id != 101
+start with employee_id=100
+connect by prior employee_id=manager_id
+order siblings by last_name;
+
+# 그러나 connect by 에 and로 하면 101번 조건의 값이 다 나오지 않는다.
+
+select level,lpad(' ',2*level-2,' ')||last_name
+from employees
+start with employee_id=100
+connect by prior employee_id=manager_id
+and employee_id != 101
+order siblings by last_name;

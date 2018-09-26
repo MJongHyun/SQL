@@ -1,0 +1,229 @@
+형변환 함수
+
+암시적 형변환
+
+desc employees
+
+select *
+from employees
+where department_id='10';
+	number   =   number
+	number   =   char -> 문자가 숫자쪽으로 쫓아가게 되어있다. 즉, 자동으로 형변환이 된다.
+	char     =   number  이 경우보단 위처럼 column에 무리가 가지 않게 바꿔주는 것이 낫다. 
+
+select *
+from employees
+where hire_date = '2001/01/01';
+	date = char -> 이 경우 무조건으로 바꾸지 않는다. 한글로 십 이렇게 적을경우는 바뀌지 않는다. 
+		       즉, 모두가 알아 볼 수 있는 값, 또는 지역과 맞게 값을 쓴다면 형변환이 가능하다.
+but select *
+from employees
+where hire_date = '01-01-2001';
+	date = char -> 이 모양으로는 절대 안된다. 왜냐하면 우리나라는 'RR/MM/DD' 형식이기 때문에 되지 않는다.!
+
+         char || number -> charter가 무조건 숫자로 가는것이 아니다. 이 경우는 무조건 char 경우로 바뀌게 된다.
+select last_name || salary
+from employees;
+
+ex) select 1+'2' ->이 경우 값이 나온다. 이유는 연산자를 보고 문자가 숫자로 바뀌게 된다.
+    from dual;
+	
+암시적으로 바뀐다 하더라고 그대로 냅두는 것은 좋지 않다. <index rowid 가 full로 바뀔수 있기에 cpu에 크게 무리가 간다.>
+
+to_char : number -> char, date -> char 형을 변환하는 함수 
+
+select sysdate # 서버시간, 날짜정보만 가진 것이 아닌 시간정보도 가지고 있다.
+from dual; 
+
+select to_char(sysdate,'yyyy year mm month mon') - 날짜모델요소/ 지역 언어에 따라 다르게 나온다.
+from dual;
+
+select to_char(sysdate,'ddd dd d day dy q"분기"') - ddd는 365일 중 몇일이 왓는지, dd는 몇일인지 d는 7일 중 몇일인지 확인. d에서 1은 일요일이다. day 요일 q 분기
+from dual;
+
+''안에 문자를 넣고 싶다면 ""을 넣어서 문자로 나타낸다. 예) '""'
+
+select to_char(sysdate,'hh24:mi:ss.sssss am fmhh24') - 초는 최대 소수 5자리까지 가능, am pm 은 오전 오후 시간에 따라 나눠서 나온다.
+from dual;  - fmhh24를 사용할 경우 0이 제외해서 나온다. 예) 1 2 3 4
+
+select to_char(sysdate,'ddspth') - 그날 dd 스펠링 sp 서수 th
+from dual; 
+
+select to_char(hire_date, 'day') - 요일로 정렬 
+from employees
+order by to_char(hire_date,'d'); - 숫자로 하면 1이 일요일이라서 일요일부터 순서로 나오게 된다.
+
+select to_char(hire_date, 'day')
+from employees
+order by to_char(hire_date-1,'d'); -날짜를 빼도 날짜이기 때문에 날짜를 빼서 하면 월요일을 맨 앞으로 할 수 있다.
+
+select to_char(sysdate,'bc scc yyyy ww w') - BC 0000 SCC 세기 ww 올해 지나간 주 w 이번달 주  
+from dual;
+
+select to_char(salary,'999,999,999.00') - 9는 숫자 하나하나 자리를 의미함, 만약 그 자리에 수가 없다면 나타나지 않는다. 0을 적을 경우 0이 없더라도 0을 생기게 한다.
+from employees;
+
+select to_char(salary,'000,999,999.00')
+from employees;
+
+select to_char(salary,'999g999d00') - g는 ,(천단위 나오고) d는 .(소수점)이 나온다. 지역마다 단위가 다르기 때문에 g와 d를 사용해서 구분해야 한다.
+from employees;
+
+# 달러 표시는 '$' 로 가능하다. 원화를 표시는 l로 표시가 가능하다. <l는 현지에서 사용하는 원화부호를 나타내준다.>
+
+select to_char(salary,'l999g999d00'),to_char(salary,'$999g999d00')
+from employees;
+
+select to_char(salary,'999.00')
+from employees; - 자리 수가 맞지않으면 # 으로 나오기 때문에 자리수를 늘려서 표현을 해줘야 한다.
+
+★ 숫자를 문자로 날짜를 문자로 해주는 것 - overlord 객체지향 프로그램 특징 ★ 
+
+select * from nls_session_parameters; - 현재 오라클에 접속하는 sql developer 환경, 지역에 맞게 환경이 다르다.
+
+ALTER SESSION SET NLS_TERRITORY=KOREA; - ALTER SESSION SET: 현재 오라클 접속한 상태에서만 이 환경을 지속한다.
+ALTER SESSION SET NLS_LANGUAGE =KOREAN;
+
+ALTER SESSION SET NLS_TERRITORY = GERMANY;
+ALTER SESSION SET NLS_LANGUAGE= GERMAN;
+
+ALTER SESSION SET NLS_LANGUAGE =JAPANESE;
+ALTER SESSION SET NLS_TERRITORY=JAPAN;
+
+ALTER SESSION SET NLS_LANGUAGE =FRENCH;
+ALTER SESSION SET NLS_TERRITORY=FRANCE;
+
+ALTER SESSION SET NLS_TERRITORY=AMERICA;
+ALTER SESSION SET NLS_LANGUAGE =AMERICAN;
+
+ALTER SESSION SET NLS_TERRITORY=china;
+ALTER SESSION SET NLS_LANGUAGE = 'simplified chinese';
+
+select employee_id, 
+      to_char(salary,'l999g999d00'),
+      to_char(hire_date, 'YYYY-MONTH-DD DAY')
+from employees;
+
+select sysdate from dual;
+alter session set nls_date_format='yyyymmdd'; - 날짜를 변형 
+select sysdate from dual;
+select * from employees where hire_date>'20020101'; - 변형한 상태로 검색을 해야한다.
+
+# alter session 한 것은 현재창에만 영향을 준다. 즉, run sql command와 같은 프로그램에는 영향을 주지 않는다.
+
+
+# 날짜 type
+
+date - 초 이하 5자리까지 나타내는 날짜 함수, 자리를 표현할 수 없다.
+timestamp(9) - 초 이하 9자리까지 나타내는 함수, 자리수를 지정해서 가능, 최대 9자리 가능, 안쓰면 6자리까지 가능 (location_stamp)
+timestamp with time zone - 타임존 까지 보여주는 함수 (current_timestamp,current_date,localtimestamp) client 시간에 맞게 저장하는 것 (서버시간에 맞게 해서 저장)
+			   다른곳에 받았을 땐 스스로 환산을 해야한다.
+timestamp with local time zone - client 시간으로 저장을 해주고 그 저장은 보는 지역에 맞게 자동으로 정규화 (서버시간으로 저장하면 안된다.), localtimestamp
+select sysdate,systimestamp,current_date,current_timestamp,localtimestamp
+from dual;
+
+current_date,current_timestamp,localtimestamp - client 시간대
+sysdate,systimestamp - 서버시간대
+
+alter session set time_zone = '+08:00';
+select sysdate,systimestamp,current_date,current_timestamp,localtimestamp
+from dual;                                                                                                                                                         
+select to_char(sysdate,'yyyy-mm-dd hh24:mi:ss.sssss'),systimestamp,to_char(current_date,'yyyy-mm-dd hh24:mi:ss.sssss'),current_timestamp,localtimestamp
+from dual;                                                                                                                                                                                                                                                                                                                            
+# 다른나라에 가서 구현을 할 때 필요하다.
+
+# 다른나라에 저장을 할때 타임존의 따라 시간이 다르기 때문에 시간을 정해서 한다.
+alter session set time_zone = '-05:00';                          
+                                                                                                  
+# timestamp with local time zone  날짜 조합자체가 보는시간대에 자동으로 맞게 저장이 된다. 
+
+# 결국 업무의 맞게 시간을 정해서 사용해야 한다.
+
+# 기간을 명시하는 값 (유일하게 날짜 + interval date값은 더하기가 가능하다.)
+
+interval year to month - 연의 수, 개월 수대로 저장  
+interval day to second - 시,분,초 이하 9자리까지 저장                                                                                                              
+
+to_yminterval - char -> interval year to month 형식으로 바꿈
+to_dsinterval - char -> interval day to second 형식으로 바꿈
+
+select sysdate + to_yminterval('10-02') -> 10 연의수, 02 개월수
+from dual;
+
+select sysdate + to_yminterval('00-300') -> 0 연의수, 300 개월수 불가하다. 개월 은 0~11개월까지 밖에 할 수 없다.
+from dual;
+
+select sysdate + to_dsinterval('100 00:00:00') -> 띄어쓰기로 구분함, 시,분,초 무조건 다 적어줘야 한다.
+from dual;                                                                                                                                                         
+select to_char(sysdate,'yyyy') -> 날짜는 numeric으로 저장되어 있기 때문에 +,-가 가능하다.
+from dual;
+
+# to_date는 날짜를 입력 할때, 조회 할때 사용하는 것이다.
+# 날짜형식에서 일반 형식을 뽑고 싶다면 to_char 형식을 통해서 뽑아내야한다.
+                                                                                                                                                                   
+# type 형식 그대로 numeric 형식으로 그대로 뽑고 싶다면 extract 함수를 이용한다.
+select extract(year from sysdate) from dual; - number타입 그대로 뽑힌다.  그래서 사칙연산 모두 가능하다.
+select extract(month from sysdate) from dual;
+select extract(day from sysdate) from dual;      
+select extract(hour from localtimestamp) from dual;
+select extract(minute from localtimestamp) from dual;
+select extract(second from localtimestamp) from dual;
+select extract(timezone_hour from systimestamp) from dual; 
+select extract(timezone_minute from systimestamp) from dual;
+select extract(timezone_hour from current_timestamp) from dual; 
+select extract(timezone_minute from current_timestamp) from dual;
+alter session set time_zone='Asia/Seoul';
+select extract(timezone_region from current_timestamp) from dual; - 지역이름
+select extract(timezone_abbr from current_timestamp) from dual; - 약어
+select * from v$timezone_names;  - 타임존 이름들.
+
+Null 관련 함수 
+
+# nvl : Null 값을 다른 값으로 대체하는 함수
+
+select last_name, salary, commission_pct, (salary*12)+(salary*12*commission_pct),(salary*12)+(salary*12*nvl(commission_pct,0))
+from employees;
+
+select employee_id,nvl(commssion_pct,'no comm') - nvl은 number 타입이기 때문에 문자타입으로 하는것은 불가능하다.
+from employees; 
+
+# 이때 nvl(to_char(commssion_pct),'no comm') 으로 바꿔주면 가능하다.
+
+select employee_id,nvl2(commission_pct,(salary*12)+(salary*12*commission_pct),salary*12) - 첫번째 인수의 값이 Null이 아니면 2번째 인수 실행 Null 이라면 3번째 인수 실행
+from employees;
+
+select coalesce((salary*12)+(salary*12*commission_pct),salary*12,salary) 
+from employees;
+
+# coalesce: 인수 값의 고정이 없다. Null이 아닌 값을 계속 찾는데 만약 1번째 Null 이라면 2번째 2번째가 null 이면 3번째로 계속간다. 인수를 계속 넣을 수 있다.
+ 	    Null이 아닌 값을 계속 찾을 수 있다. (type는 number형태만 가능하다.)
+# nvl2 함수는 리터럴 함수가 가능하다. 2,3번째 인수는 type를 맞춰 주는것이 좋다. 1번째 하곤 type를 다르게 적어도 가능하다.
+
+select employee_id,nvl2(commission_pct,'(salary*12)+(salary*12*commission_pct)','salary*12') - 첫번째 인수의 값이 Null이 아니면 2번째 인수 실행 Null 이라면 3번째 인수 실행
+from employees;
+
+# nullif: Null을 만드는 함수, 첫번째 인수의 값과 두번째 인수의 값이 같다면 Null 값을 생성 아니면 첫번째 인수값을 생성한다.
+
+select employee_id , nullif(length(last_name),length(first_name))
+from employees;
+
+# if a=b then
+	null;
+else
+	a;
+end if;
+
+# is null : null이 있는 값만 뽑아 내겠다는 의미
+
+select *
+from employees
+where commission_pct is null;
+
+# is not null : null이 없는 값만 뽑아 내겠다.
+
+select *
+from employees
+where commission_pct is not null;
+
+# 이 범위에 속하지 않은 값을 뽑고 싶다 - not like 이런식으로 표현하면 된다. not between 
+

@@ -1,0 +1,166 @@
+# subquery(서브쿼리) -> 비교해야 할 값을 빨리 찾기 위해서
+
+sql문 안에 select 문이 있는 쿼리를 서브쿼리라고 한다.
+
+single row subquery(단일행 서브쿼리) : 서브쿼리에서 리턴되는 값이 1개라면 단일행 서브쿼리이다.
+multiple row subquery(여러행 서브쿼리)
+multiple column subquery(다중열 서브쿼리)
+
+
+select *
+from employees
+where job_id=?;
+
+select job_id
+from employees
+where employee_id=141; - 두개를 하나로 수행하고 싶을 때 하는 방법!
+
+
+select * -> 메인 쿼리
+from employees 
+where job_id=(select job_id  -> 메인쿼리의 where 절과 서브쿼리의 select 절의 값의 갯수가 같아야 한다.
+		from employees
+		where employee_id=141); -> 이것을 서브쿼리라 한다. (중첩서브쿼리라고 한다.)
+
+
+-> 여기에선 서브쿼리가 먼저 돌아 간 후 메인 쿼리가 돌아 간다.
+
+# 중첩 서브 쿼리 : 서브 쿼리가 먼저 돌아가고 메인쿼리가 돌아가는 형식을 의미한다. (단일행 서브쿼리의 유형)
+
+# single row subquery(단일행 서브쿼리) : 서브쿼리에서 리턴되는 값이 1개라면 단일행 서브쿼리이다.
+				         단일행 비교 연산자만 사용이 가능하다. (=,>,<,>=,<=,!=,<>,^=)
+
+
+
+select *
+from employees 
+where salary>(select salary
+		from employees
+		where employee_id=141);
+
+select *-> 단일 연산자를 썼다면 무조건 단일 값으로만 나오게 해야한다.
+from employees 
+where salary>(select salary
+            	from employees
+                where last_name='King'); : king이란 이름이 2개 이상이므로 불가하다.
+
+# multiple row subquery(여러행 서브쿼리) : 서브쿼리에 리턴되는 값이 2개 이상인 경우 
+					   여러행 비교 연산자 사용 (in,not in,> any,< any,= any, > all,< all)
+
+>수정<
+select *
+from employees 
+where salary> all(select salary
+            	 from employees
+                 where last_name='King'); 
+
+<서브쿼리를 풀 땐 먼저 서브쿼리를 적은 후 실행하여 단일인지 다중인지 파악을 해야한다.>
+
+IT-PROG 보다 많이 받는 사람들
+
+# 여러행 비교 연산자
+
+1. any : OR의 범주  (예 where sal>100 or sal>200 or sal>300) 
+
+select * - 오류
+from employees
+where salary>(select salary
+		from employees
+		where job_id = 'IT_PROG');
+------------------------------------------------------
+
+
+# > any : 최소값 보다 크다.
+
+select *                                                                                      
+from employees
+where salary > any(select salary
+			from employees
+			where job_id = 'IT_PROG');
+
+
+select *      - (최소값보다 크다의 역할)                                                                              
+from employees
+where salary > (select min(salary)
+			from employees
+			where job_id = 'IT_PROG');
+------------------------------------------------------
+
+# < any : 최대값 보다 작다.
+
+select *                                                                                      
+from employees
+where salary < any(select salary
+			from employees
+			where job_id = 'IT_PROG');
+
+
+select *       - (최대값보다 작다의 역할)                                                                              
+from employees
+where salary < (select max(salary)
+			from employees
+			where job_id = 'IT_PROG');
+------------------------------------------------------
+
+# = any : in 연산자
+
+select *                                                                                      
+from employees
+where salary = any(select salary
+			from employees
+			where job_id = 'IT_PROG');
+
+
+select *      - (IN 연산자 역할)                                                                               
+from employees
+where salary in (select salary
+			from employees
+			where job_id = 'IT_PROG');
+------------------------------------------------------
+
+2. all : AND의 범주 (예 where sal>100 and sal>200 and sal>300) 
+
+# > all : 최대값 보다 크다.
+
+select *
+from employees
+where salary > all(select salary
+			from employees
+			where job_id = 'IT_PROG');
+
+select *      - (최대값보다 크다의 역할)                                                                          
+from employees
+where salary > (select max(salary)
+			from employees
+			where job_id = 'IT_PROG');
+------------------------------------------------------
+
+# < all : 최소값 보다 작다.
+
+select *
+from employees
+where salary < all(select salary
+			from employees
+			where job_id = 'IT_PROG');
+
+select *      - (최소값보다 작다의 역할)                                                                          
+from employees
+where salary < (select min(salary)
+			from employees
+			where job_id = 'IT_PROG');
+
+------------------------------------------------------
+
+# = all : 공집합!
+
+select *      - 공집합이다.        NULL                                                            
+from employees
+where salary = all(select min(salary)
+			from employees
+			where job_id = 'IT_PROG');
+
+
+
+
+
+

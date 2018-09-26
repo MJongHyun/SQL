@@ -1,0 +1,4068 @@
+
+<문제1> employees 테이블에서 employee_id, last_name과 first_name은 연결해서 표시하고(공백으로 구분) 열 별칭은 화면예 처럼 보고서 작성해 주세요.
+
+select employee_id as "Emp #", last_name ||' '|| first_name as "Employee Name"
+from employees;
+
+<문제2> employees 테이블에서 컬럼중에 last_name, job_id를 연결해서 표시하고(쉼표와 공백으로 구분) 열 별칭은 화면예 처럼 보고서 작성하세요.
+
+select last_name||', '||job_id as "Employee and Title"
+from employees;
+
+<문제3> employees 테이블에서 급여가 2500~3500 인 사원들의 모든정보를 조회하세요.
+2500~3500 범위는 반드시 물어봐서 클라이언트가 원하는 방향으로 해서 만든다. (여기선 이상 이하를 말한다.)
+
+select *
+from employees
+where salary>=2500 
+and salary<=3500; 
+
+select * 
+from employees
+where salary between 2500 and 3500;
+
+<문제4> 관리자의 사원번호가 100,101,200인 사원들의 모든정보를 출력해주세요.
+
+select *
+from employees
+where manager_id=100 
+or manager_id=101 
+or manager_id=200;
+
+select *
+from employees
+where manager_id in(100,101,200);
+
+<문제5> last_name 두번째 위치에 소문자 o가 있고 뒤에 어떤 글자가 올지 모른다. 이 조건에 해당하는 
+데이터를 추출해주세요.
+
+select *
+from employees
+where last_name like '_o%';
+
+[문제6] departments 테이블에 있는 데이터에서 department_name , manager_id 컬럼을 가지고 화면 결과 처럼 출력하는 쿼리문장을 만드세요.
+
+select department_name|| q'[ Department Manager's Id: ]' ||manager_id as "Department and Manager"
+from departments;
+
+select department_name|| ' Department Manager''s Id: ' ||manager_id as "Department and Manager"
+from departments;
+
+
+[문제7] employees 테이블에 있는 데이터 중에  last_name에 Whalen 이라는 사원의 모든 정보를 출력하세요.
+
+select *
+from employees
+where last_name like 'Whalen%'; # like를 사용 할 경우 range로 간다. 처음부터 끝까지 문자열을 알고 있다면 굳이 like를 쓰지않는 것이 좋다.
+                                # ★ like는 무조건 문자패턴을 찾는 것이다. ★
+select *
+from employees 
+where last_name = 'Whalen';
+
+# where 절 조건 비교시 숫자는 그대로 기입가능하나 문자나 날짜는 리터럴을 통해 표현한다.
+# 대/소문자도 구분해서 잘 써야 한다.
+# 만약 오류가 날 경우 row 나 upper, initcap 을 써서 확인한다.
+
+[문제8] EMPLOYEES 테이블에서 급여가 3000보다 작거나 같은 사원의 last_name, salary 를 출력하세요.
+
+select last_name, salary
+from employees
+where salary<=3000;
+
+[문제9] EMPLOYEES 테이블에서 salary(급여)값이 10000이상부터 15000이하인 사원들의 모든정보를 출력하세요.
+
+select *
+from employees
+where salary between 10000 and 15000;
+
+[문제10] EMPLOYEES 테이블에서 last_name이 "S"로 시작하는 사원의 last_name, first_name 을 출력하세요.
+
+select last_name, first_name
+from employees
+where last_name like 'S%';
+
+[문제11] last_name의 세번째 문자가 "o"인 모든 사원의 last_name을 출력하세요.
+
+select last_name
+from employees
+where last_name like '__o%';
+
+[문제12] employees 테이블에 있는 데이터 중에 job_id에 SA_ 문자열로 시작되는 사원들의 employee_id, last_name, job_id를 출력하세요.
+
+select employee_id, last_name, job_id
+from employees
+where job_id like 'SA\_%' escape '\';
+
+#  SA_% 인 경우 'SA\_\%' escape '\'; 이런식으로 표현한다.
+
+[문제13] employees 테이블에 있는 데이터에서 job_id컬럼의 값이  SA로 시작하고  10000 이상의 salary(급여)를 받는 사원들의 모든 정보를 출력하세요.
+
+select *
+from employees
+where job_id like 'SA%'
+and salary>=10000;
+
+[문제14] employees 테이블에서  job_id 컬럼의 값이  SA로 시작하거나 10000 이상의 salary(급여)를 받는 사원들의 모든 정보를 출력하세요.
+
+select *
+from employees
+where job_id like 'SA%'
+or salary>=10000;
+
+[문제15] employees 테이블에서  job_id컬럼의 값이  IT_PROG, ST_CLERK , SA_REP가 아닌 모든 사원의 last_name, job_id를  출력해주세요.
+
+select last_name, job_id
+from employees
+where job_id not in ('IT_PROG', 'ST_CLERK' , 'SA_REP');  # 대/소문자 잘 구분해서 사용한다.
+
+[문제16] employees 테이블에 있는 데이터에서 job_id컬럼의 값이  SA로 시작하고  10000 이상의 salary(급여)를 받고 2005년도에 입사한(hire_date) 모든 사원들의 정보를 출력하세요.
+
+select *
+from employees
+where job_id like 'SA%'
+and salary>=10000
+and hire_date between to_date('05/01/01','yy/mm/dd') and to_date('06/01/01 23:59:59','yy/mm/dd hh24:mi:ss');
+
+select *
+from employees
+where job_id like 'SA%'
+and salary>=10000
+and hire_date>=to_date('05/01/01','yy/mm/dd')
+and hire_date<to_date('06/01/01','yy/mm/dd');
+
+#to_date가 시간과 날을 모두 표현하기 때문에 날짜로 비교를 해야 할 경우 무조건 사용한다.
+
+[문제17] employees 테이블에서 job_id 컬럼의 값이 SA_REP 또는 AD_PRES 사원들 중에 급여가 10000 초과 한 사원들의 모든 정보를 출력하세요.
+
+select *
+from employees
+where job_id in('SA_REP','AD_PRES')
+and salary>10000;
+
+
+select *
+from employees
+where (job_id ='SA_REP'
+or job_id = 'AD_PRES')
+and salary>10000;
+
+# 괄호를 통해서 우선순위를 정해서 한다. <and와 or 연산자 우선순위는 and가 더 높다.>
+
+[문제18] employees 테이블에 last_name 컬럼의 값 중에  "J" 또는 "A" 또는 "M"으로 시작하는 사원들의 last_name(첫번째 문자는
+대문자, 나머지는 모두 소문자)과 last_name의 길이를 표시하는 query 를 작성합니다.
+사원들의 last_name을 기준으로 결과를 오름차순 정렬해 주세요.
+
+select initcap(last_name) ,length(last_name) 
+from employees
+where last_name like 'J%'
+or last_name like 'A%'
+or last_name like 'M%'
+order by 1;
+
+select initcap(last_name) "Name",length(last_name) "Length"
+from employees
+where last_name like 'J%'
+or last_name like 'A%'
+or last_name like 'M%'
+order by last_name;
+
+select initcap(last_name) "Name",length(last_name) "Length"
+from employees
+where instr(last_name,'J')=1
+or instr(last_name,'A')=1
+or instr(last_name,'M')=1
+order by last_name;
+
+select initcap(last_name) "Name",length(last_name) "Length"
+from employees
+where substr(last_name,1,1)in('J','A','M')
+order by last_name;
+
+[문제19] employees테이블에서 department_id(부서코드)가 50번 사원들 중에 last_name에 두번째 위치에 "a"글자가 있는 사원들을 조회하세요. 
+
+select *
+from employees
+where department_id=50
+and last_name like '_a%';
+
+select *
+from employees
+where department_id=50 
+and substr(last_name,2,1)='a';
+
+select *
+from employees
+where department_id=50 
+and instr(last_name,'a')=2;
+
+[문제20] 사원의 last_name,hire_date 및 근무 6 개월 후 월요일에 해당하는 날짜를 조회하세요. 열별칭은 REVIEW 로 지정합니다. 
+
+select last_name, hire_date, next_day(add_months(hire_date,6),'월요일') as "REVIEW" 
+from employees;
+
+[문제21] 15년 이상 근무한 사원들의 employee_id(사원번호), hire_date(입사일), 근무개월수를 조회하세요.
+
+select employee_id as "사원번호" ,hire_date as "입사일",sysdate-hire_date as "근무개월수"
+from employees
+where sysdate-hire_date>=15*365;
+
+select employee_id as "사원번호" ,hire_date as "입사일",months_between(sysdate,hire_date) as "근무개월수"
+from employees
+where months_between(sysdate,hire_date)>=15*12;
+
+[문제22] employees(사원)테이블에 있는 last_name의 세번째 문자가 'a' 또는 'e'가 포함된 모든 사원의 last_name을 조회하세요.
+
+select last_name
+from employees
+where instr(last_name,'a')=3
+or instr(last_name,'e')=3;
+
+select last_name
+from employees
+where last_name like '__a%'
+or last_name like '__e%';
+
+select last_name
+from employees
+where instr(last_name,'a')=3
+or instr(last_name,'e')=3
+or instr(last_name,'a',1,2)=3
+or instr(last_name,'a',1,3)=3
+or instr(last_name,'e',1,2)=3
+or instr(last_name,'e',1,3)=3;
+
+# 경우의 수를 따져서 instr를 써야한다. 처음 a 가 나온게 3번째 2번째 a가 나온게 3
+
+[문제23] employees(사원)테이블에 있는  80번 부서(department_id) 사원중에 commission_pct 값이 0.2 이고 job_id는 SA_MAN인 사원의 employee_id, last_name, salary를 조회하세요.
+
+select employee_id,last_name,salary
+from employees
+where department_id=80
+and commission_pct=0.2
+and job_id ='SA_MAN';
+
+[문제24] 사원의 employees(사원)테이블에 있는 last_name,hire_date 및 근무 6 개월 후 첫번째 월요일에 해당하는 급여 협상 날짜를 표시합니다. 
+             열 레이블을 REVIEW 로 지정합니다. 
+            날짜는 "월요일, the Second of 4, 2007"과 유사한 형식으로 나타나도록 지정합니다.
+
+select last_name, hire_date, to_char(next_day(add_months(hire_date,6),'월요일'),'day') ||', the ' || initcap(to_char(next_day(add_months(hire_date,6),'월요일'),'ddspth')) || ' of ' ||  to_char(next_day(add_months(hire_date,6),'월요일'),'mm, yyyy') as "REVIEW"
+from employees
+order by 1;
+
+select last_name, hire_date, to_char(next_day(add_months(hire_date,6),'월요일'),'day, "the" Ddspth "of" mm,yyyy') as "REVIEW"
+from employees
+order by 1;
+
+
+
+[문제25] employees(사원) 테이블에서  일요일에 입사한 사원의 정보를 조회하세요.
+
+select *
+from employees
+where to_char(hire_date,'day')='일요일';
+
+select *
+from employees
+where to_char(hire_date,'d')=1;
+
+[문제26] 짝수달에 입사한 사원의 정보를 조회하세요.
+
+select *
+from employees
+where mod(to_char(hire_date,'mm'),2)=0;
+
+select *
+from employees
+where mod(to_number(to_char(hire_date,'mm')),2)=0;
+
+# to_number: char -> number 형변환 함수
+
+# to_date: char -> date 형변환 함수
+
+[문제27] 2006년도에 홀수 달에 입사한 사원의 employee_id, last_name, hire_date를 조회하세요.
+
+select employee_id, last_name, hire_date
+from employees
+where hire_date >= '20060101'
+and hire_date < '20070101'
+and mod(to_number(to_char(hire_date,'mm')),2)=1;
+
+select employee_id, last_name, hire_date
+from employees
+where to_char(hire_date,'yyyy')='2006'
+and mod(to_number(to_char(hire_date,'mm')),2)=1;
+
+select employee_id, last_name, hire_date
+from employees
+where hire_date>=to_date('2006/01/01','yyyy/mm/dd')
+and hire_date<to_date('2007/01/01','yyyy/mm/dd')
+and mod(to_number(to_char(hire_date,'mm')),2)<>0;
+
+[문제28] 아래 화면의 결과 처럼 사원의  last_name,  salary, salary 값을 1000당 별표를 하나를 출력하는  query문을 작성하세요. 
+
+select last_name,salary, rpad(replace(salary,salary,'*'),salary/1000,'*') as "STAR"
+from employees
+order by 2 desc;
+
+select last_name,salary, rpad('*',salary/1000,'*') as "STAR"
+from employees
+order by 2 desc;
+
+select last_name, salary, rpad(' ',trunc(salary/1000)+1,'*') as "STAR"  
+from employees
+order by 2 desc;
+
+[문제29] 아래 화면결과 처럼 출력하세요.
+
+<화면 출력>
+
+현재날짜시간
+------------------------------------------------------------------------------------------------------------------
+현재 서버의 날짜 시간 : 20180530 09:35:46 오전
+
+select to_char(sysdate,'"현재 서버의 날짜 시간 : "yyyymmdd hh24:mi:ss am') as "현재날짜시간"
+from dual;
+
+문제30] 아래 화면결과 처럼 출력하세요.
+
+
+<화면 출력>
+
+하루전
+------------------------------------------------------------------------------------------------------------------------------
+서버의 시간을 기준으로 하루 전 : 20180529 09:40:02
+
+select to_char(sysdate-1,'"서버의 시간을 기준으로 하루전 : "yyyymmdd hh24:mi:ss') as "하루 전"
+from dual;
+
+select to_char(sysdate-to_dsinterval('001 00:00:00'),'"서버의 시간을 기준으로 하루전 : "yyyymmdd hh24:mi:ss') as "하루 전"
+from dual;
+
+[문제31] 아래 화면결과 처럼 출력하세요.
+
+<화면 출력>
+
+1시간전
+--------------------------------------------------------------------------------------------------------------------------------
+서버의 시간을 기준으로 1시간 전 : 20180530 08:43:25
+
+select to_char(sysdate-1/24,'"서버의 시간을 기준으로 1시간 전 : "yyyymmdd hh24:mi:ss') as "1시간전"  => 여기서 / 는 나누기가 아니라 구분자이다.
+from dual;
+
+select to_char(sysdate-to_dsinterval('000 01:00:00'),'"서버의 시간을 기준으로 1시간 전 : "yyyymmdd hh24:mi:ss') as "1시간전"
+from dual;
+
+[문제32] 아래 화면결과 처럼 출력하세요.
+
+<화면 출력>
+
+5분전
+--------------------------------------------------------------------------------------------------------------------------
+서버의 시간을 기준으로 5분 전 : 20180530 09:38:57
+
+select to_char(sysdate-5/(24*60),'"서버의 시간을 기준으로 5분 전 : "yyyymmdd hh24:mi:ss') as "5분전"
+from dual;
+
+select to_char(sysdate-to_dsinterval('000 00:05:00'),'"서버의 시간을 기준으로 5분 전 : "yyyymmdd hh24:mi:ss') as "5분전"
+from dual;
+
+[문제33] 아래 화면결과 처럼 출력하세요.
+
+<화면 출력>
+
+10초전
+----------------------------------------------------------------------------------------------------------------------------
+서버의 시간을 기준으로 10초 전 : 20180530 09:44:39
+
+select to_char(sysdate-10/(24*60*60),'"서버의 시간을 기준으로 10초 전 : "yyyymmdd hh24:mi:ss') as "10초전"
+from dual;
+
+select to_char(sysdate-to_dsinterval('000 00:00:10'),'"서버의 시간을 기준으로 10초 전 : "yyyymmdd hh24:mi:ss') as "10초전"
+from dual;
+
+[문제34] JOB_ID 열의 값을 기준으로 모든 사원의 등급(GRADE)을 표시하는 query 를 작성하세요.
+
+select job_id,
+	case job_id
+		when 'AD_PRES' then 'A'
+		when 'ST_MAN' then 'B'
+		when 'IT_PROG' then 'C'
+		when 'SA_REP' then 'D'
+		when 'ST_CELRK' then 'E'
+	else
+		'Z'
+	end as "GRADE"
+from employees;
+
+select job_id,
+	decode(job_id,'AD_PRES','A',
+		      'ST_MAN','B',
+		      'IT_PROG','C',
+		      'SA_REP','D',
+		      'ST_CELRK','E',
+		      'Z') as "GRADE"
+from employees;
+
+[문제35] 사원테이블에  연봉을 계산 하는 쿼리문을 작성하세요 단 commission_pct 값이 
+null 아니면 (salary*12) + (salary*12*commission_pct) 이값이 수행되고
+null 이면 salary * 12 가 수행합니다. 수행 결과는 화면처럼 만드세요.
+(nvl, nvl2,  coalesce, case, decode 함수를 사용하여 각각으로 수행해서 보고서 작성해 주세요)
+
+
+
+LAST_NAME      SALARY COMMISSION_PCT  ANN_SAL
+-------------------- ---------- -------------------------  ------------
+OConnell              2600                     	            31200
+Russell                 14000                          .4     235200
+
+select last_name,salary,nvl(to_char(commission_pct),' ') as "COMMISSION_PCT",
+	(salary*12)+(salary*12*nvl(commision_pct,0)) as "ANN_SAL"
+from employees
+order by 1;
+
+select last_name,salary,nvl(to_char(commission_pct),' ') as "COMMISSION_PCT",
+	case 
+		when commission_pct is null then salary*12
+		else (salary*12)+(salary*12*commission_pct)
+	end as "ANN_SAL"
+from employees
+order by 1;
+
+select last_name,salary,nvl(to_char(commission_pct),' ') as "COMMISSION_PCT",
+	decode(commission_pct,null,salary*12
+		,(salary*12)+(salary*12*commission_pct)) as "ANN_SAL"
+from employees
+order by 1;
+
+select last_name,salary,nvl(to_char(commission_pct),' ') as "COMMISSION_PCT",
+	coalesce((salary*12) + (salary*12*commission_pct), salary * 12) as "ANN_SAL"
+from employees
+order by 1;
+
+select last_name,salary,nvl(to_char(commission_pct),' ') as "COMMISSION_PCT",
+	nvl2(commission_pct,(salary*12) + (salary*12*commission_pct),salary * 12) as "ANN_SAL"
+from employees
+order by 1;
+
+[문제36] 모든 사원의 최고급여, 최저급여, 합계 및 평균 급여를 찾습니다. 
+열 레이블을 각각 Maximum, Minimum, Sum 및 Average 로 지정합니다. 
+결과를 소수점은 반올림해서 정수값으로 출력하세요.
+
+   Maximum    Minimum        Sum    Average
+  -------------- --------------   ----------   ------------
+        24000          2100     691416        6462
+
+select round(max(salary),0) as "Maximum", round(min(salary),0) as "Minimum", round(sum(salary),0) as "Sum", round(avg(salary),0) as "Average"
+from employees;
+
+[문제37] 2008년도에 입사한 사원들의 job_id별 인원수를 구하고 인원수가 많은 순으로 출력하세요. 
+
+JOB_ID     COUNT(*)
+---------- ---------------
+SA_REP              6 
+SH_CLERK          2 
+ST_CLERK          2 
+SA_MAN            1 
+
+select job_id, count(*)
+from employees
+where to_char(hire_date,'yyyy')='2008'
+group by job_id
+order by 2 desc;
+
+select job_id, count(*)
+from employees
+where hire_date>=to_date('2008/01/01','yyyy/mm/dd')
+and hire_date<to_date('2009/01/01','yyyy/mm/dd')
+group by job_id
+order by 2 desc;
+
+[문제38] job_id별로 총액급여를 구합니다. 단 CLERK글자가 있는 job_id는 제외하고 
+총액급여는 13000가 넘는 정보를 출력하면서 총액 급여를 기준으로 내림차순 정렬하세요.
+
+select job_id, sum(salary) as "총액급여"
+from employees
+where job_id not like '%CLERK%'
+group by job_id
+having sum(salary)>13000
+order by 2 desc;
+
+[문제39] 입사한 년도별로 급여의 총액을 출력하세요.
+
+select to_char(hire_date,'yyyy'), sum(salary)
+from employees
+group by to_char(hire_date,'yyyy')
+order by 1;
+
+select extract(year from hire_date),sum(salary)
+from employees
+group by extract(year from hire_date)
+order by 1;
+
+[문제40] 입사한 달별 인원수를 출력해주세요.
+
+select to_char(hire_date,'mm"월"'),count(to_char(hire_date,'mm"월"')) 
+from employees
+group by to_char(hire_date,'mm"월"')
+order by 1;
+
+select extract(month from hire_date),count(extract(month from hire_date))
+from employees
+group by extract(month from hire_date)
+order by 1;
+
+[문제41] 사원의 총수와 2005년, 2006년, 2007년, 2008년에 입사한 사원의 수 출력하세요.
+
+   TOTAL    2005     2006     2007     2008
+   -------- ---------- ---------- ---------- ----------
+     107         29         24         19         11
+
+select count(employee_id) as "TOTAL",  count(decode(extract(year from hire_date),2005,1)) as "2005"
+                                    ,  count(decode(extract(year from hire_date),2006,1)) as "2006"
+                                    ,  count(decode(extract(year from hire_date),2007,1)) as "2007"
+                                    ,  count(decode(extract(year from hire_date),2008,1)) as "2008"
+from employees;
+
+select count(employee_id) as "TOTAL", count(case extract(year from hire_date) when 2005 then 1 end ) as "2005"
+                                    , count(case extract(year from hire_date) when 2006 then 1 end ) as "2006"
+                                    , count(case extract(year from hire_date) when 2007 then 1 end ) as "2007"
+                                    , count(case extract(year from hire_date) when 2008 then 1 end ) as "2008"
+from employees;
+
+select count(employee_id) as "TOTAL", count(case to_char(hire_date,'yyyy') when '2005' then 1 end ) as "2005"
+                                    , count(case to_char(hire_date,'yyyy') when '2006' then 1 end ) as "2006"
+                                    , count(case to_char(hire_date,'yyyy') when '2007' then 1 end ) as "2007"
+                                    , count(case to_char(hire_date,'yyyy') when '2008' then 1 end ) as "2008"
+from employees;
+
+select count(employee_id) as "TOTAL",  count(decode(to_char(hire_date,'yyyy'),2005,1)) as "2005"
+                                    ,  count(decode(to_char(hire_date,'yyyy'),2006,1)) as "2006"
+                                    ,  count(decode(to_char(hire_date,'yyyy'),2007,1)) as "2007"
+                                    ,  count(decode(to_char(hire_date,'yyyy'),2008,1)) as "2008"
+from employees;
+
+[문제42] 모든 사원의 last_name, department_id, department_name을 표시하기 위한 query 를 작성합니다.
+
+select e.last_name,e.department_id,d.department_name
+from employees e, departments d
+where e.department_id=d.department_id(+);
+
+select e.last_name,e.department_id,d.department_name
+from employees e left outer join departments d
+on e.department_id=d.department_id;
+
+[문제43] 부서 80에 속하는 last_name, job_id, department_name, city를 표시하기 위한 query 를 작성합니다.
+
+select e.last_name,e.job_id,d.department_name,l.city
+from employees e, departments d, locations l
+where e.department_id=d.department_id
+and d.location_id=l.location_id
+and d.department_id=80;
+
+select e.last_name,e.job_id,d.department_name,l.city
+from employees e join departments d
+on e.department_id=d.department_id
+join locations l
+on d.location_id=l.location_id
+where d.department_id=80;
+
+[문제44] commission_pct 에 null이 아닌 모든 사원의 last_name, department_name, location_id, city를 표시하기 위한 query 를 작성합니다.
+
+# 이 문제에서 포인트는 commission_pct 가 Null 이 아닌 값의 갯수가 결과 값이 같은지를 따져서 풀어야 한다.
+# 그리고 join 할 때 사용하는 값 e.department_id 값과 d.department_id 값을 따져 서로 같은지도 파악을 해야 오류 없이 문제를 해결할 수 있다.
+
+select e.last_name, d.department_name, d.location_id, l.city
+from employees e, departments d, locations l
+where e.department_id=d.department_id(+)
+and d.location_id=l.location_id(+)
+and e.commission_pct is not null;
+
+select e.last_name, d.department_name, d.location_id, l.city
+from employees e left outer join departments d
+on e.department_id=d.department_id
+left outer join locations l
+on d.location_id=l.location_id
+where e.commission_pct is not null;
+
+[문제45] last_name에 a(소문자)가 포함된 모든 사원의 last_name, department_name 을 표시하기 위한 query 를 작성합니다.
+
+# a가 있는 last_name 갯수는 나와야 한다. 적다면 null 값을 의심(결측값 의심) 을 하고 문제를 확인해야 한다.
+
+select e.last_name,d.department_name
+from employees e, departments d
+where e.department_id=d.department_id(+)
+and e.last_name like '%a%';
+
+select e.last_name,d.department_name
+from employees left outer join departments
+on e.department_id=d.department_id
+where e.last_name like '%a%';
+
+select e.last_name,d.department_name
+from employees e, departments d
+where e.department_id=d.department_id(+)
+and instr(e.last_name,'a')>=1;
+
+[문제46] locations 테이블에 있는 city컬럼에  Toronto도시에서 근무하는 모든 사원의 
+last_name, job_id, department_id, department_name 을 표시하기 위한 query 를 작성합니다.
+
+# location city 근무 하는 사원이라면 department_id가 있는 것이 당연(?) 하기 때문에 outer로 하는 것은 위험하다.
+
+select e.last_name, e.job_id, e.department_id, d.department_name
+from employees e, departments d, locations l
+where e.department_id=d.department_id
+and d.location_id=l.location_id
+and l.city='Toronto';
+
+select e.last_name, e.job_id, e.department_id, d.department_name
+from employees e join departments d
+on e.department_id=d.department_id
+join locations l
+on d.location_id=l.location_id
+where l.city='Toronto';
+
+[문제47] 2006년도에 입사한 사원들의 부서이름별로 급여의 총액, 평균을 출력하세요.
+
+# to_char을 하면 변환이 되기 때문에 full scan이 되어 악성코드가 된다.
+# 그러므로 연도로 가야한다.
+# extract 도 full scan 이므로 to_date로 하는것이 가장 적절하다. to_date(날짜,'날짜형식')
+
+select d.department_name as "부서이름" ,sum(e.salary) as "급여총액" ,avg(e.salary) as "급여평균"
+from employees e, departments d
+where e.department_id=d.department_id
+and extract(year from e.hire_date)=2006
+group by d.department_name;
+
+select d.department_name as "부서이름" ,sum(e.salary) as "급여총액" ,avg(e.salary) as "급여평균"
+from employees e join departments d
+on e.department_id=d.department_id
+where extract(year from e.hire_date)=2006
+group by d.department_name;
+
+[문제48] 2006년도에 입사한 사원들의 도시이름별로 급여의 총액, 평균을 출력하세요.
+
+# 2006년에 입사한 사람의 건수 를 세고 join 하고 건수를 파악한다.
+
+select l.city, sum(e.salary), avg(e.salary)
+from employees e, departments d, locations l
+where e.department_id=d.department_id
+and d.location_id=l.location_id
+and hire_date>=to_date('2006/01/01','yyyy/mm/dd')
+and hire_date<to_date('2007/01/01','yyyy/mm/dd')
+group by l.city;
+
+select l.city, sum(e.salary), avg(e.salary)
+from employees e join departments d
+on e.department_id=d.department_id
+join locations l
+on d.location_id=l.location_id
+where hire_date>=to_date('2006/01/01','yyyy/mm/dd')
+and hire_date<to_date('2007/01/01','yyyy/mm/dd')
+group by l.city;
+
+[문제49] 2007년도에 입사한 사원들의 도시이름별로 급여의 총액, 평균을 출력하세요. 
+            단 부서 배치를 받지 않는 사람들의 급여의 총액, 평균도 구하세요.
+
+# 2007년에 입사한 사람의 건수 를 세고 join 하고 건수를 파악한다.
+
+select l.city, sum(e.salary), avg(e.salary)
+from employees e, departments d, locations l
+where e.department_id=d.department_id(+)
+and d.location_id=l.location_id(+)
+and hire_date>=to_date('2007/01/01','yyyy/mm/dd')
+and hire_date<to_date('2008/01/01','yyyy/mm/dd')
+group by l.city;
+
+select l.city, sum(e.salary), avg(e.salary)
+from employees e left outer join departments d
+on e.department_id=d.department_id
+left outer join locations l
+on d.location_id=l.location_id
+where hire_date>=to_date('2007/01/01','yyyy/mm/dd')
+and hire_date<to_date('2008/01/01','yyyy/mm/dd')
+group by l.city;
+
+[문제50] 사원들의 사번, 급여, 급여등급, 부서이름을 출력하세요.
+         부서배치를 받지 않는 사원은 제외시켜주세요.
+
+select e.employee_id,e.salary,j.grade_level,d.department_name
+from employees e, departments d, job_grades j
+where e.department_id=d.department_id
+and e.salary between j.lowest_sal and j.highest_sal;
+
+select e.employee_id,e.salary,j.grade_level,d.department_name
+from employees e join departments d
+on e.department_id=d.department_id
+join job_grades j
+on e.salary between j.lowest_sal and j.highest_sal;
+
+[문제51] 사원들의 사번, 급여, 급여등급, 부서이름, 근무 도시 정보를 출력하세요.
+         부서배치를 받지 않는 사원도 포함시켜주세요.
+
+# 조인의 순서: 급여는 모두 받을 테니까 그냥 join 하고 부서배치가 없는 값이 있다고 가정하고 풀었다.
+# 107개가 아닌 값을 찾아서 했어야 함. 그림을 생각해서 join을 해야한다.
+
+select e.employee_id,e.salary,j.grade_level,d.department_name,l.city
+from employees e, departments d, locations l,job_grades j
+where e.salary between j.lowest_sal and j.highest_sal
+and e.department_id=d.department_id(+)
+and d.location_id=l.location_id(+)
+order by 1;
+
+select e.employee_id,e.salary,j.grade_level,d.department_name,l.city
+from employees e join job_grades j
+on e.salary between j.lowest_sal and j.highest_sal
+left outer join departments d
+on e.department_id=d.department_id
+left outer join locations l
+on d.location_id=l.location_id;
+order by 1;
+
+[문제52] 사원들의 last_name,salary,grade_level, department_name을 출력하는데 last_name에 a문자가 2개 이상 포함되어 있는 사원들을 출력하세요
+
+# instr 는 기본으로 1,1 이다. 2번째 나오는 a가 1보다 커야한다. -> n번째 나오는것을 기준으로 해서 뽑으면 갯수를 생각해야한다.
+
+select e.last_name,e.salary,j.grade_level, d.department_name
+from employees e, departments d, job_grades j 
+where e.salary between j.lowest_sal and j.highest_sal 
+and e.department_id=d.department_id 
+and instr(e.last_name,'a',1,2)>1
+order by 1;
+
+select e.last_name,e.salary,j.grade_level, d.department_name
+from employees e, departments d, job_grades j 
+where e.salary between j.lowest_sal and j.highest_sal 
+and e.department_id=d.department_id 
+and e.last_name like '%a%a%'
+order by 1;
+
+select e.last_name,e.salary,j.grade_level, d.department_name
+from employees e join job_grades j 
+on e.salary between j.lowest_sal and j.highest_sal
+join departments d
+on e.department_id=d.department_id 
+where instr(e.last_name,'a',1,2)>1
+order by 1;
+
+[문제53] 141사원의 job_id와 동일한 job_id를 가진 사원들 중에 141번 사원의 급여 보다 더 많이 받는 사원을 출력해 주세요.
+
+select *
+from employees
+where job_id= (select job_id        -> 141사원의 job_id와 동일한 job_id를 가진 사원들 중
+                    from employees
+                    where employee_id=141)
+and salary>(select salary           -> 141번 사원의 급여 보다 더 많이 받는 사원
+                    from employees
+                    where employee_id=141);
+
+[문제54] 최소월급을 받는 사원들의 정보를 출력해주세요.
+
+select *
+from employees
+where salary = (select min(salary) -> 최소월급을 받는 사원들
+		from employees);
+		
+
+[문제55] 평균 급여가 가장 낮은 job_id를 찾아주세요. -> where 절 뿐만 아니라 having 절에서도 사용이 가능하다.
+
+select job_id, avg(salary) -> job_id를 뽑아낸다.
+from employees
+group by job_id
+having avg(salary) = (select min(avg(salary)) -> 평균 급여가 가장 낮은 값을 구한 후
+			from employees 
+			group by job_id);
+			
+
+[문제56] 부서별로 최소 급여자들을 출력해주세요 <서브쿼리를 풀 땐 먼저 서브쿼리를 적은 후 실행하여 단일인지 다중인지 파악을 해야한다.>
+
+select *
+from employees
+where salary in(select min(salary)   -> 부서별로 최소 급여자들 => 두 개 이상 값을 리턴하기 때문에
+                from employees
+                group by department_id); -> 다중 행 서브쿼리
+
+
+[문제57] last_name 에 문자 "u"가 포함된 사원과 같은 부서에 근무하는 모든 사원의 employee_id, last_name 을 출력하세요.
+
+select employee_id, last_name
+from employees
+where department_id= any(select department_id
+			from employees
+			where last_name like '%u%');
+
+# JOIN 으로 해결되지 않는 이유 둘다 m족 집합이기 때문에 조인을 할 수가 없다. (1족이라고 확인할 수 없다면 조인은 불가능하다.)
+
+
+[문제58] 부서 위치(location_id) ID 가 1700 인 모든 사원의 last_name, department_id, job_id 를 출력하세요.(조인, 서브쿼리)
+
+select e.last_name, d.department_id, e.job_id
+from employees e, departments d
+where e.department_id=d.department_id
+and d.location_id=1700;
+
+select last_name, department_id, job_id
+from employees
+where department_id = any(select department_id
+				from departments
+				where location_id=1700);
+
+# 차이점 : 양쪽 테이블 컬럼을 확인 하려면 조인만 가능하고 서브쿼리는 불가능하다.
+
+[문제59] King 에게 보고하는 모든 사원의 last_name 및 salary 출력하세요.(조인, 서브쿼리)
+
+select w.last_name,w.salary
+from employees d, employees w
+where d.employee_id=w.manager_id
+and d.last_name='King'; 
+
+select last_name,salary
+from employees
+where manager_id = any(select employee_id
+			 from employees
+			 where last_name='King');
+
+[문제60] 부서 이름(department_name) 이 Executive 부서의 모든 사원에 대한 department_id, last_name, job_id  출력하세요. (join으로도 해보기)
+
+select department_id,last_name,job_id
+from employees
+where department_id = (select department_id
+			from departments
+			where department_name='Executive');
+
+[문제61]  60부서에 소속된 모든 사원의 급여(salary)보다 높은(max) 급여를 받는 모든 사원 출력하세요.
+
+select *
+from employees
+where salary > (select max(salary)
+		from employees 
+	 	 where department_id=60);
+
+[문제62] 전체 평균 급여보다 많은 급여를 받고 last_name에 "u"가 포함된 사원이 있는 부서에서 근무하는 모든 사원의 employee_id, last_name, salary 출력하세요
+
+select employee_id, last_name, salary
+from employees 
+where salary > (select avg(salary)
+		from employees)
+and department_id = any(select department_id
+			 from employees
+		      	 where last_name like '%u%');
+
+[문제63] 관리자 사원들의 정보를 출력해주세요 
+
+select *
+from employees
+where employee_id in(select manager_id
+			from employees);
+
+[문제64] 관리자가 아닌 사원들의 정보를 출력해 주세요
+
+# 서브쿼리문에 NULL 값이 있다면 제외시키고 실행을 해야한다.!
+
+select *
+from employees
+where employee_id not in(select manager_id  -> not in 을 쓸 때 null 값이 있다면 값이 나오지 않는다. 그래서 서브쿼리문을 항상 확인해야한다.
+			  from employees);
+
+select *
+from employees
+where employee_id in(select employee_id
+			from employees
+			where manager_id is not null);
+
+
+select *
+from employees
+where employee_id <> all(select employee_id
+			from employees
+			where manager_id is not null);
+
+select *
+from employees
+where employee_id in(select employee_id
+			from employees
+			where employee_id<>manager_id);
+
+[문제65] last_name에 Davies 사원보다 늦게 입사한 사원 중에 급여가 Davies 사원의 급여 이하로 받고 있는 사원들을 출력해주세요.
+
+select *
+from employees
+where hire_date > (select hire_date
+		   from employees
+		   where last_name = 'Davies')
+and salary <= (select salary
+	       from employees
+	       where last_name = 'Davies');
+
+select w.*                   -> 여기서 e를 데이빗 employees 고유로 생각해서 풀면된다. (non equi 라 생각하면된다. join 이라해서 무조건 join절을 쓰는것은 아니다.)
+from employees e , employees w  그래서 w를 사원 테이블이라 생각하고 아스트릭 앞에 w를 붙여서 w에 대한 값을 구한다 (조인해서 테이블이 2개이므로 구별을 해줘야 한다).
+where e.last_name='Davies'
+and e.hire_date<w.hire_date 
+and e.salary>=w.salary;
+
+[문제66] 자신의 부서 평균 급여보다 더 많은 급여를 받는 사원들의 정보를 출력해주세요.
+
+select * -> 구해야 할값
+from employees
+where salary > (select avg(salary)
+                from employees
+                where department_id=자신의 부서코드); 
+
+select * 
+from employees o
+where o.salary > (select avg(salary)
+                  from employees
+                  where department_id=o.department_id); 
+
+select *
+from employees o
+where exists (select 'x'
+              from employees
+              where department_id=o.department_id
+              having o.salary>avg(salary));
+              
+
+[문제67] 두번이상 job_id를 바꾼 사원을 출력해주세요.
+
+select * 
+from employees
+where 두번이상 job_id를 바꾼 사원
+
+select * 
+from employees o
+where 2 <= (select count(*)
+	    from job_history
+	    where employee_id=o.employee_id);
+
+select *
+from employees o 
+where exists (select count(*)
+              from job_history
+              where o.employee_id = employee_id
+              having count(*)>=2
+              group by employee_id); 
+
+[문제68] 관리자 사원에 대해서 출력해주세요.
+
+select *
+from employees
+where manager_id in(select employee_id
+		     from employees);
+                   
+select *
+from employees o
+where exists (select 'x'
+	      from employees
+              where manager_id = o.employee_id);
+
+[문제 69] 관리자가 아닌 사원에 대해서 출력해주세요.
+
+select *
+from employees o
+where not exists (select 'x'
+	          from employees
+                  where manager_id = o.employee_id);
+
+[문제 70] 사원이 없는 부서정보만 출력해주세요.
+
+select *
+from departments  
+where department_id not in(select department_id
+		  	  from employees
+		  	  where department_id is not Null);
+
+select *
+from departments o 
+where not exists (select 'x'
+		  from employees
+		  where department_id = o.department_id);
+
+[문제 71] 30번 부서에서 나보다 늦게 입사 했는데 급여를 많이 받는 사람을 뽑으시오.
+
+select *
+from employees o
+where o.department_id=30
+and exists (select 'x'
+            from employees
+            where o.department_id=department_id 
+            and hire_date>o.hire_date 
+            and salary>o.salary);
+
+select e.*
+from employees e
+where e.department_id=30
+and salary < (select max(salary)
+	      from employees
+              where department_id=e.department_id
+	      and hire_date>e.hire_date);
+
+[문제 72] 사원수가 3명미만인 부서번호, 부서이름, 인원수를 출력해주세요
+
+# join 을 밑에 꺼보다 위에서 더 많이 하게 된다. 밑에껀 3미만인 것만 하고 위에껀 모두 join을 한 후 조건을 본것이기 때문에 프로그램에 무리가 간다. 
+# inline View를 쓰는 이유는 join 하는 양을 줄이기 위해서 !
+# 축소한 테이블을 만들 수 없다면 굳이 inline view를 사용할 필요가 없다.
+
+select d.department_id,d.department_name,j.asd
+from (select department_id,count(*) asd
+      from employees
+      group by department_id
+      having count(*)<3) j, departments d
+where d.department_id=j.department_id;
+
+select d.department_id,d.department_name,count(*)
+from employees e join departments d
+on e.department_id=d.department_id
+group by d.department_id,d.department_name
+having count(*)<3;
+
+select d.department_id,d.department_name,count(*)
+from departments d
+where exists (select 'x'
+              from employees
+              where department_id=d.department_id              
+              group by d.department_id,d.department_name
+              having count(*)<3)
+group by d.department_id,d.department_name;
+
+[문제73] 2005년, 2006년, 2007년, 2008년에 입사한 사원의 수 출력하세요.
+
+      2005       2006       2007       2008
+   ---------- ---------- ---------- ----------
+       29         24         19         11
+
+select to_char(hire_date,'yyyy'),count(*)
+from employees
+group by to_char(hire_date,'yyyy')
+order by 1;
+
+select min(decode(year,'2001',ad)) "2001",
+       min(decode(year,'2002',ad)) "2002",
+       min(decode(year,'2003',ad)) "2003",
+       min(decode(year,'2004',ad)) "2004",
+       min(decode(year,'2005',ad)) "2005",
+       min(decode(year,'2006',ad)) "2006",
+       min(decode(year,'2007',ad)) "2007",
+       min(decode(year,'2008',ad)) "2008"
+from (select to_char(hire_date,'yyyy') year,count(*) ad
+      from employees
+      group by to_char(hire_date,'yyyy')); 
+
+SELECT 
+       decode(year,'2001',cn) "2001",
+       decode(year,'2002',cn) "2002",
+       decode(year,'2003',cn) "2003",
+       decode(year,'2004',cn) "2004",   
+       decode(year,'2005',cn) "2005",
+       decode(year,'2006',cn) "2006",
+       decode(year,'2007',cn) "2007",
+       decode(year,'2008',cn) "2008"       
+FROM (
+              SELECT to_char(hire_date, 'yyyy') year, count(*) cn
+              FROM employees
+              GROUP BY(to_char(hire_date, 'yyyy')));
+
+
+SELECT 
+       max(decode(year,'2001',cn)) "2001",
+       max(decode(year,'2002',cn)) "2002",
+       max(decode(year,'2003',cn)) "2003",
+       max(decode(year,'2004',cn)) "2004",   
+       max(decode(year,'2005',cn)) "2005",
+       max(decode(year,'2006',cn)) "2006",
+       max(decode(year,'2007',cn)) "2007",
+       max(decode(year,'2008',cn)) "2008"       
+FROM (
+              SELECT to_char(hire_date, 'yyyy') year, count(*) cn
+              FROM employees
+              GROUP BY(to_char(hire_date, 'yyyy')));
+
+[문제74] 평균 급여가 가장 높은 부서의 부서 번호와 최고, 최저, 평균 급여를 출력하세요.
+
+select department_id,max(salary),min(salary),avg(salary)
+from employees
+group by department_id
+having avg(salary) = (select max(avg(salary))
+                     from employees
+                     group by department_id);
+
+[문제75] 사원 수가 가장 많은 부서이름, 도시, 인원수를 출력해주세요.
+
+select d.department_name,l.city,e.cn
+from (select department_id, count(*) cn
+      from employees
+      group by department_id
+      having count(*) = (select max(count(*))
+                                 from employees
+                                 group by department_id)) e, departments d, locations l
+where e.department_id=d.department_id
+and d.location_id=l.location_id;
+
+select d.department_name,l.city,e.ad
+from  (select department_id,count(*) ad
+         from employees
+         group by department_id
+         having count(*) = (select max(count(*))
+                                   from employees
+                                   group by department_id)) e join departments d 
+			                                on d.department_id=e.department_id
+			                                join locations l
+			                                on l.location_id=d.location_id;
+
+[문제76] 사원 채용 수가 가장 많은 요일을 출력해주세요.
+
+select to_char(hire_date,'day')
+from employees
+group by to_char(hire_date,'day')     
+having count(*)=(select max(count(*)) 
+                         from employees
+                         group by to_char(hire_date,'day')); 
+      
+# 꼭 그룹함수를 쓰지 않는다 하더라도 group by절을 사용하는 것이 가능하다.
+
+[문제77] 사원 채용 수가 가장 많은 요일에 입사한 사원들의 last_name, 요일을 출력해주세요.
+
+select last_name,to_char(hire_date,'day')
+from employees
+where to_char(hire_date,'day') in (select to_char(hire_date,'day')
+		  	      from employees
+                                                group by to_char(hire_date,'day')
+                                                having count(*)=(select max(count(*))
+                                                                         from employees
+                                                                         group by to_char(hire_date,'day')));
+
+[문제78] 부서별로 인원수를 출력주세요. (case로도 해보기)
+
+<화면결과> 
+
+       10         20        30         40        50         60         70         80         90      100        110 부서가 없는 사원
+---------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ------------------
+         1          2          6            1         45           5          1         34           3           6          2        1 
+
+select max(decode(e.department_id,10,e.ad)) as "10",
+max(decode(e.department_id,20,e.ad))as "20",
+max(decode(e.department_id,30,e.ad))as "30",
+max(decode(e.department_id,40,e.ad))as "40",
+max(decode(e.department_id,50,e.ad))as "50",
+max(decode(e.department_id,60,e.ad))as "60",
+max(decode(e.department_id,70,e.ad))as "70",
+max(decode(e.department_id,80,e.ad))as "80",
+max(decode(e.department_id,90,e.ad))as "90",
+max(decode(e.department_id,100,e.ad))as "100",
+max(decode(e.department_id,110,e.ad))as "110",
+max(decode(e.department_id,null,e.ad))as "부서번호가 없는 값"
+from(select department_id,count(*) ad
+     from employees
+     group by department_id
+     order by 1) e ;
+
+[문제79] 부서 번호와 급여가 커미션을 받는 사원의 부서 번호 및 급여와 일치하는 모든  사원의 last_name, department_id, salary 를 표시하는 query 를 작성하세요.
+
+select last_name,department_id,salary
+from employees
+where (department_id,salary)in (select department_id, salary
+			      from employees
+                                                where commission_pct is not null);
+ 
+[문제80] 급여와 커미션이 location_id가 1700 에 있는 사원의 급여 및 커미션과 일치하는 사원의 last_name, department_name, salary를 출력해주세요.
+
+# Null 값은 특정 값을 만들어서 해줘야 비교가 가능하다 ★
+# 결측치를 항상 확인해줘야 하기 때문에 비교하려는 서브 쿼리 값을 확인해줘야 한다.
+
+select e.last_name,d.department_name, e.salary
+from departments d, employees e
+where e.department_id=d.department_id
+and (e.salary,nvl(e.commission_pct,0)) in (select salary,nvl(commission_pct,0)
+                                                              from employees
+				        where department_id in (select department_id
+                                                                                                     from departments
+					                               where location_id=1700));
+                             
+[문제81] Johnson 와 동일한 급여 및 커미션을 받는 모든 사원의 last_name, hire_date, salary, commission_pct를 표시하는 query 를 작성합니다.
+단 결과에 Johnson 를 표시하지 마십시오.
+
+select last_name,hire_date,salary,commission_pct
+from employees
+where (salary,commission_pct) in (select salary,commission_pct
+				  from employees
+				  where last_name like 'Johnson')
+and last_name not like 'Johnson';
+
+[문제82] 부서별의 총 급여가 전체 부서의 평균 급여보다 많은 부서의 이름과 총 급여를 표시하도록 query를 작성하세요.
+
+# inline view 는 제약을 준 값을 다시 또 view에 호출에서 하는것은 불가능하다.
+
+
+select w.department_name,sum(q.salary)
+from employees q,departments w 
+where q.department_id=w.department_id
+group by w.department_name
+having sum(q.salary)  > (select avg(sum(e.salary)) 
+     		        from employees e, departments d
+                        where e.department_id=d.department_id
+                        group by d.department_name);
+ 
+select d.department_name,e.sumsal
+from (select department_id,sum(salary) sumsal
+      from employees
+      group by department_id
+      having sum(salary)>(select avg(sumsal)
+                          from (select sum(salary) sumsal
+                                from employees
+                                group by department_id))) e, departments d
+where e.department_id=d.department_id;
+
+with
+dept_cost as (select d.department_name,sum(e.salary) as sumsal
+	      from employees e, departments d
+              where e.department_id=d.department_id
+	      group by d.department_name),
+avg_cost as (select sum(sumsal)/count(*) as deptavg
+	     from dept_cost)
+
+select *
+from dept_cost
+where sumsal > (select deptavg
+		from avg_cost);
+
+# 위에와 값이 다른 이유 : 조인절 equi 조인을 하기 때문에 null 값은 떨어져 나간다. 그래서 null 값을 포함 할꺼면 outer join을 해서 값을 구한다.
+# 결측치에 대해선 반드시 고객과 말을 맞춰서 넣을지 말지를 결정해야 한다.
+
+[문제83] job_id가  ST_CLERK 을 포함하지 않는 부서에 대한 department_id를 출력해주세요.
+
+select department_id
+from departments
+minus
+select department_id
+from employees
+where job_id='ST_CLERK';
+
+select department_id
+from departments d
+where not exists (select 'x'
+                          from employees
+                          where job_id='ST_CLERK'
+                          and department_id=d.department_id);
+                       
+[문제84] 부서가 소재하지 않는 국가의 리스트가 필요합니다. 해당 국가의 country_id, country_name을 출력해주세요.
+
+select country_id,country_name
+from countries c
+where not exists ( select 'x'
+	             from locations l
+	             where l.country_id=c.country_id
+	             and l.location_id  in  (select d.location_id
+			                 from departments d
+			                 where d.location_id=l.location_id));
+
+select country_id,country_name 
+from countries c
+where not exists(select 'x'
+        	           from locations l , departments d
+                         where d.location_id=l.location_id
+                         and l.country_id = c.country_id);
+
+select country_id,country_name -> 문제점 1. sort발생 2. 중복테이블 발생.(테이블이 대용량일시 무리가 감)
+from countries
+minus
+select l.country_id,c.country_name
+from departments d, locations l, countries c
+where l.country_id = c.country_id
+and d.location_id = l.location_id;
+
+[문제85] 사원들의 employee_id, last_name, department_name을 출력하는데 소속부서가 없는 사원도 출력하시고, 
+         소속사원이 없는 부서도 출력하세요. ANSI표준 조인, 오라클 전용 조인으로 만드세요.
+
+select e.employee_id,e.last_name,d.department_name
+from employees e full outer join departments d
+on e.department_id=d.department_id;
+
+select e.employee_id,e.last_name,d.department_name
+from employees e, departments d
+where e.department_id=d.department_id(+)
+union 
+select e.employee_id,e.last_name,d.department_name
+from employees e, departments d
+where e.department_id(+)=d.department_id
+
+select e.employee_id,e.last_name,d.department_name
+from employees e, departments d
+where e.department_id=d.department_id(+)
+union all
+select null, null, d.department_name
+from departments d
+where not exists ( select 'x'
+                           from employees e
+                           where e.department_id = d.department_id); 
+
+select e.employee_id,e.last_name,d.department_name  # null 값도 다 지워진다.
+from employees e, departments d
+where e.department_id=d.department_id(+)
+union all
+select e.employee_id,e.last_name,d.department_name
+from employees e, departments d
+where e.department_id(+)=d.department_id
+and not exists (select 'x'
+                       from employees w, departments q
+                       where w.department_id=q.department_id);
+
+[문제86]  
+1. department_id, job_id, manager_id 기준으로 총액 급여를 출력
+2. department_id, job_id 기준으로 총액급여출력
+3. department_id 기준으로 총액급여 출력
+4. 전체 총액 급여를 출력
+
+1,2,3,4를 한꺼번에 출력해주세요.
+
+# 값들을 합쳐야 하므로 집합연산자 사용.
+
+select department_id,job_id,manager_id,sum(salary)
+from employees 
+group by department_id,job_id,manager_id
+union all
+select department_id,job_id,null,sum(salary)
+from employees
+group by department_id,job_id
+union all
+select department_id,null,null,sum(salary)
+from employees
+group by department_id
+union all
+select null,null,null,sum(salary)
+from employees;
+
+[문제87]
+1. department_id,manager_id 기준 급여 총합
+2. department_id,job_id 기준 급여 총합
+1,2 한꺼번에 출력해주세요.
+
+select department_id,manager_id,null,sum(salary)
+from employees 
+group by department_id,manager_id
+union all
+select department_id,null,job_id,sum(salary)
+from employees 
+group by department_id,job_id;
+
+[문제88] 년도별로 입사한 인원수, 전체 인원수를 출력해주세요
+
+           2001          2002             2003           2004          2005            2006           2007             2008      총인원수
+---------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+               1                 7                6                 10             29               24               19                11         107
+     
+select max(decode(bb ,'2001',aa)) as "2001",
+      max(decode(bb ,'2002',aa)) as "2002",
+      max(decode(bb ,'2003',aa)) as "2003",
+      max(decode(bb ,'2004',aa))as "2004",
+      max(decode(bb ,'2005',aa)) as "2005",
+      max(decode(bb ,'2006',aa))as "2006",
+      max(decode(bb ,'2007',aa))as "2007",
+      max(decode(bb ,'2008',aa))as "2008",
+      max(decode(bb ,null,aa)) as "총인원수"  -- rollup 전체인 값 구하기
+from(select to_char(hire_date,'yyyy') bb ,count(*) aa
+     from employees
+     group by rollup(to_char(hire_date,'yyyy'))); 
+
+[문제89] 달별 입사한 인원수, 총인원수를 출력해주세요.
+
+           1월              2월             3월              4월              5월              6월              7월             8월              9월             10월           11월            12월       총인원수
+--------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+            14              13               17                7                6               11                7                9                  5                6                 5             7              107
+
+ select   case when bb='01' then aa end as "1월",
+          case when bb='02' then max(aa) end as "2월",
+          case when bb='03' then max(aa) end as "3월",
+          case when bb='04' then max(aa) end as "4월",
+          case when bb='05' then max(aa) end as "5월",
+          case when bb='06' then max(aa) end as "6월",
+          case when bb='07' then max(aa) end as "7월",
+          case when bb='08' then max(aa) end as "8월",
+          case when bb='09' then max(aa) end as "9월",
+          case when bb='10' then max(aa) end as "10월",
+          case when bb='11' then max(aa) end as "11월",
+          case when bb='12' then max(aa) end as "12월", 
+          case when bb is null then max(aa) end as "총합수"
+ from   (select to_char(hire_date,'mm') bb ,count(*) aa
+          from employees
+          group by rollup(to_char(hire_date,'mm'))); 
+
+
+
+
+
+ select max(decode(bb ,'01',aa)) as "1월",
+           max(decode(bb ,'02',aa)) as "2월",
+           max(decode(bb ,'03',aa)) as "3월",
+           max(decode(bb ,'04',aa)) as "4월",
+           max(decode(bb ,'05',aa)) as "5월",
+           max(decode(bb ,'06',aa)) as "6월",
+           max(decode(bb ,'07',aa)) as "7월",
+           max(decode(bb ,'08',aa)) as "8월",
+           max(decode(bb ,'09',aa)) as "9월",
+           max(decode(bb ,'10',aa)) as "10월",
+           max(decode(bb ,'11',aa)) as "11월",
+           max(decode(bb ,'12',aa)) as "12월",
+           max(decode(bb ,null,aa)) as "총인원수"  -- rollup 전체인 값 구하기
+ from (select to_char(hire_date,'mm') bb ,count(*) aa
+         from employees
+         group by rollup(to_char(hire_date,'mm'))); 
+
+[문제90] 새로운 user를 생성하세요.
+
+         	유저이름 : insa
+         	default tablespace : users
+	temporary tablespace : temp
+	users tablespace 사용량 : 1m
+
+create user insa
+identified by insa
+default tablespace users
+temporary tablespace temp
+quota 1m on users;
+
+[문제91] insa 유저에게 create session, create table 시스템 권한을 부여해주세요.
+
+grant create session to insa;
+grant create table to insa;
+
+revoke create table from insa -- 회수해야될 시스템 권한
+
+grant create session,table to insa; (쉼표찍고 하는것도 가능)
+
+select * from  dba_sys_privs where grantee='INSA';
+
+table 만들 땐 1. 테이블 권한 부여 , 2. quota 부여
+
+[문제92] insa 유저가 사용할 수 있는 users tablespace quota 값을 unlimited로 수정하세요.
+
+alter user insa quota unlimited on users;
+
+select * from dba_ts_quotas; -- 사용할수 있는 quota 값
+select * from user_ts_quotas; 
+
+[문제93] hr 유저가 소유한 employees 테이블의 select 객체 권한을 insa 유저에게 부여해주세요.
+
+grant select on hr.employees to insa ;
+
+grant select,insert,update,delete on hr.employees to insa ; 
+revoke insert,update,delete on hr.employees from insa;
+
+select * from user_tab_privs; -- tab은 object 권한 확인
+
+(DML권한 SELECT 권한 을 모두 줄 수 있다.)
+
+[문제94] hr 유저가 소유한 departments 테이블의 select 객체 권한을 insa 유저에게 부여해주세요.
+
+grant select on hr.departments to insa ;
+
+select * from user_users; -- 유저확인 
+select *  from session_privs; -- 권한확인
+select  * from dba_users --dba에서 user 확인
+select * from dba_roles;
+select * from user_sys_privs; --유저권한확인
+select * from session_roles;
+
+[문제95]  insa 유저는 테이블논리적설계.pdf에 ERD(Entity Relationship Diagram)을 확인 한후 table instance chart를  보면서 테이블을 구성하세요.
+
+create table DEPT
+(dept_id number(3) constraint dept_pk primary key,
+dept_name varchar(50) constraint dept_uk unique,
+mgr number(5)
+);
+
+alter table dept  
+modify dept_name 
+constraint dept_nn not null;
+
+create table EMP
+(id number(5) constraint emp_id_pk primary key,
+name varchar2(50)constraint emp_name_nn not null,
+hire_date date constraint emp_date_nn not null,
+sal number(8,2) constraint emp_sal_ck check (sal>100),
+mgr number(5) constraint emp_mgr_fk references emp(id), 
+dept_id number(3) constraint emp_dept_id_fk references dept(dept_id);
+);
+---------------------------------------------------------------------------------------------------------
+create table DEPT
+(dept_id number(3) constraint dept_pk primary key,
+dept_name varchar(50) 
+constraint dept_uk unique -- 제약조건 2개를 넣을 시 constraint 로 하고 바로 하면 된다.
+constraint dept_nn not null
+mgr number(5)
+);
+
+create table EMP
+(id number(5) constraint emp_id_pk primary key,
+name varchar2(50)constraint emp_name_nn not null,
+hire_date date constraint emp_date_nn not null,
+sal number(8,2) constraint emp_sal_ck check (sal>100),
+mgr number(5) constraint emp_mgr_fk references emp(id), 
+dept_id number(3) constraint emp_dept_id_fk references dept(dept_id);
+);
+
+select * from user_constraints -- 제약조건 확인,어느컬럼에 되어있는지는 모른다.
+where table_name='EMP';
+
+select  * from user_cons_columns --어떤 컬럼에 어떤 제약이 걸려있는지 확인.
+where table_name='EMP';
+
+[문제96] hr.departments 테이블의 department_id, department_name, manager_id 데이터를 insa 유저의 dept 테이블로 insert 한후 영구히 저장하세요.
+
+insert into dept(dept_id,dept_name,mgr)
+select department_id,department_name,manager_id from hr.departments;
+commit;
+
+[문제97] hr.employees 테이블의 employee_id, last_name, hire_date, salary, manager_id, department_id 데이터를 insa 유저의 emp 테이블로 insert 한후 영구히 저장하세요.
+
+insert into emp(id,name,hire_date,sal,mgr,dept_id)
+select  employee_id, last_name, hire_date, salary, manager_id, department_id from hr.employees;
+commit;
+
+[문제98] insa유저의 dept 테이블의 부서정보 중에 소속사원이 없는 부서정보를 삭제한 후 영구히 저장하세요.
+
+delete from dept d
+where not exists (select 'x'
+                          from emp
+	            where dept_id=d.dept_id);
+commits;
+
+[문제99] 사원들 중에 근무연수가 15년 이상 이면서 급여는 10000이상 급여를 받는 사원들은 emp_1테이블에 사번, 이름, 입사일, 근무연수, 급여 정보를 입력하고
+      근무연수가 15년 이상 이면서 급여는 10000미만 급여를 받는 사원들은 emp_2테이블에 사번, 이름, 입사일, 근무연수, 급여 정보를 입력하세요.
+
+create table emp_1(id number, name varchar2(30), day date, years number, sal number);
+create table emp_2(id number, name varchar2(30), day date, years number, sal number);
+ 
+insert into emp_1 -- 서브쿼리로 하면 2번 발생 하므로 insert all, insert first 를 사용한다.(조건에 맞게 테이블에 값을 넣어야 한다면 조건 테이블을 쓴다.)
+select employee_id, last_name, hire_date, months_between(sysdate,hire_date) / 12 day, salary
+from employees
+where months_between(sysdate,hire_date) / 12 >= 15
+and salary >= 10000;
+
+insert into emp_2
+select employee_id, last_name, hire_date, months_between(sysdate,hire_date) / 12 day, salary
+from employees
+where months_between(sysdate,hire_date) / 12 >= 15
+and salary < 10000;
+
+select * from emp_1;
+select * from emp_2;
+rollback;
+
+
+insert first
+when day >= 15 and salary >= 10000 then
+into emp_1(id,name,day,years,sal) values(employee_id,last_name,hire_date,day,salary)
+when day >= 15 and salary < 10000 then
+into emp_2(id,name,day,years,sal) values(employee_id,last_name,hire_date,day,salary)
+select employee_id, last_name, hire_date, months_between(sysdate,hire_date) / 12 day, salary
+from employees
+where months_between(sysdate,hire_date) / 12 > 15;
+
+select * from emp_1;
+select * from emp_2;
+rollback;
+
+insert first
+when day >= 15 and salary >= 10000 then
+into emp_1(id,name,day,years,sal) values(employee_id,last_name,hire_date,day,salary)
+when day >= 15 and salary < 10000 then
+into emp_2(id,name,day,years,sal) values(employee_id,last_name,hire_date,day,salary)
+select employee_id, last_name, hire_date, months_between(sysdate,hire_date) / 12 day, salary
+from employees;
+
+insert first
+when salary >= 10000 then
+into emp_1(id,name,day,years,sal) values(employee_id,last_name,hire_date,day,salary)
+when salary < 10000 then
+into emp_2(id,name,day,years,sal) values(employee_id,last_name,hire_date,day,salary)
+select employee_id, last_name, hire_date, months_between(sysdate,hire_date) / 12 day, salary
+from employees
+where months_between(sysdate,hire_date) / 12 >= 15;
+
+-- 일수와 달수에 따라 값이 달라 질수 있기 때문에 값을 조정해서 답을내야 한다.
+
+create table emp_1
+(id number(5), name varchar2(50), hire_date date, 
+ wh number,sal number(8,2))
+ tablespace users;
+ 
+ create table emp_2
+(id number(5), name varchar2(50), hire_date date, 
+ wh number,sal number(8,2));
+ tablespace users;
+ 
+ insert first -- insert 수행
+ when ssal>=10000 then
+ into emp_1(id,name,hire_date,wh,sal)
+      values(iid,nname,hire,a,ssal)
+ else
+ into emp_2(id,name,hire_date,wh,sal)
+      values(iid,nname,hire,a,ssal)
+ select employee_id iid,last_name nname, hire_date hire,months_between(sysdate,hire_date) / 12 a, salary ssal -- select가 먼저 돌아가고
+ from hr.employees 
+ where months_between(sysdate,hire_date) / 12 >= 15  ;
+ 
+ select *
+from user_sys_privs;
+
+[문제100] EMPLOYEES 테이블을 복제 EMP_COPY 이름으로 복제하세요.
+
+create table emp_copy
+as select * from employees; --ctas 에선 not null 제약조건만 복사가 된다.
+
+[문제101] EMP_COPY테이블에 employee_id에 emp_copy_id_pk 이름으로 primary key 제약조건을 추가하세요. 
+	
+alter table emp_copy  add constraint emp_copy_id_pk primary key(employee_id);
+
+select * from user_constraints where table_names='EMP_COPY' -- 제약조건 확인
+ 
+[문제102] EMP_COPY 테이블에 department_name varchar2(30) 컬럼을 추가하세요.
+
+alter table emp_copy add (department_name varchar2(30));
+
+
+★[문제103] DEPARTMENTS 테이블에 있는 department_name을 기준으로 EMP_COPY 테이블에 department_name에 값을 수정하세요.
+             단 UPDATE문을 이용해서 해결한 후 수정된 정보를 확인하고 ROLLBACK 하세요.
+
+update emp_copy e 
+set e.department_name =  (select department_name
+                          	             from departments  
+                                         where e.department_id=department_id);
+
+rollback;
+
+
+
+[문제104] DEPARTMENTS 테이블에 있는 department_name을 기준으로 EMP_COPY 테이블에 department_name에 값을 수정하세요.
+            단 MERGE문을 이용해서 해결한 후  수정된 정보를 영구히 저장하세요.
+
+merge into emp_copy e 
+using departments d
+on (e.department_id=d.department_id)
+when matched then
+    update set
+      e.department_name=d.department_name;
+
+commit;
+
+
+[문제105] EMP_COPY 테이블에 department_name에 값을 NULL 값으로 수정하세요. 
+              단 MERGE문을 이용해서 해결한 후 ROLLBACK 하세요.
+
+merge into emp_copy e 
+using departments d
+on (e.department_id=d.department_id)
+when matched then
+    update set
+      e.department_name = null;
+
+rollback;
+
+
+[문제106] 사원들의 급여가 5000 미만일 경우 employee_id, salary 정보를 SPECIAL_SAL 테이블에 입력하고 
+아니면 employee_id, hire_date, salary정보를 SAL_HISTORY 테이블에 입력하고 
+또는  employee_id, manager_id, salary 정보를  MGR_HISTORY 테이블에 입력한다.
+
+create table SPECIAL_SAL
+as select employee_id,salary from employees where 1=2;
+
+create table SAL_HISTORY
+as select employee_id,hire_date,salary from employees where 1=2;
+
+create table MGR_HISTORY
+as select employee_id,manager_id,salary from employees where 1=2;
+
+insert all
+when salary<5000 then
+into special_sal(employee_id,salary) values (employee_id,salary)
+else
+into sal_history(employee_id,hire_date,salary) values (employee_id,hire_date,salary) -- 똑같은 값을 넣을 땐 제약조건 넣을 때와 같이 into를 써서 삽입한다.
+into mgr_history(employee_id,manager_id,salary) values (employee_id,manager_id,salary)
+select employee_id,salary,hire_date,manager_id from employees;
+
+insert first
+when sal < 5000 then
+into special_sal values (empid, sal)
+else
+into sal_history values(empid,hiredate,sal) 
+into mgr_history values(empid,mgr,sal)
+select employee_id empid, hire_date hiredate, salary sal, manager_id mgr
+from employees;
+
+[문제107] emp.csv 파일의 데이터를 분석하려고 한다. external table를 생성하세요.,
+
+DBA 
+create directory data_dir as 'c:\data\';
+grant read,write on directory data_dir to hr; --badfie,logfile 생성시 사용 (write 권한필요) -- object 권한
+
+select * from dba_directories where directory_name='DATA_DIR'
+
+HR
+create table empxt11
+(id number,name varchar2(50), hire_date date, job_id varchar2(20), dept_id number)
+organization external
+(
+type oracle_loader
+default directory data_dir
+access parameters
+(
+records delimited by newline -- 한 record (row) 씩 하나씩 하나씩 띄어서 값을 넣는다.
+badfile 'empxt11.bad' -- 실패되는 레코드 값 
+logfile 'empxt11.log'
+fields terminated by ','
+missing field values are null -- 없는 값은 null
+(id,name,hire_date char date_format date mask "yyyymmdd",job_id,dept_id)
+)
+location('emp11.csv')
+)
+reject limit unlimited; -- 필수!★★
+
+select * from empxt11;
+
+select * from user_external_tables where table_name = 'EMPXT11';
+
+select * from user_external_locations where table_name = 'EMPXT11';
+
+select * from empxt11 where hire_date like '2002%';
+
+select * from empxt11 
+where hire_date  >= to_date('20020101','yyyymmdd')
+and hire_date < to_date('20030101','yyyymmdd');
+
+# extarnal table 단점 -- DML은 불가능하다. index 설계는 불가능하다.
+
+[문제108]부서이름별 총액급여, 평균급여, 최고급여, 최저급여를
+출력하는 query문을 작성한 후, dept_sal_vw view를 생성하세요.
+
+create view dept_sal_vw  
+ as select d.department_name,sum(e.salary) "A",avg(e.salary) "B",max(e.salary) "C",min(e.salary) "D" -- 만들어줄 때 반드시 별칭을 써줘야 한다.
+    from employees e, departments d
+    where e.department_id=d.department_id
+    group by d.department_name;
+
+create or replace view dept_sal_vw
+as select *
+from (select d.department_name,e.total_sal,e.avg_sal,e.max_sal,e.min_sal
+	from (select department_id,sum(salary) total_sal,trunc(avg(salary),1) avg_sal,max(salary) max_sal,min(salary) min_sal -- 인라인 뷰를 사용하는 이유 : 조인 횟수를 줄이기 위해서. 그리고 인라인 뷰 안에 인라인 뷰를 쓰는것도 가능하다.(좋은건 아니다.)
+         		from employees
+       		 group by department_id) e, departments d
+where d.department_id=e.department_id);
+
+create or replace view dept_sal_vw
+as select d.department_name,e.total_sal,e.avg_sal,e.max_sal,e.min_sal
+     from (select department_id,sum(salary) total_sal,trunc(avg(salary),1) avg_sal,max(salary) max_sal,min(salary) min_sal 
+               from employees
+                group by department_id) e, departments d
+where d.department_id=e.department_id;
+
+-- ★★직계값을 먼저 만든 후에 조인하면 조인하는 수가 줄어 들기 때문에 인라인뷰로 하는것이 좋다.
+
+[문제109] emp 테이블을 생성한 후 통계정보를 확인 한후 통계수집을 하세요.
+
+drop table emp purge;
+
+create table emp
+as select * from employees;
+
+select num_rows,blocks,avg_row_len -- 통계 수집됬는지 확인
+from user_tables
+where table_name='EMP';
+
+exec dbms_stats.gather_table_stats('hr','emp',no_invaliddate=>False); -- 통계수집함수 , 무효화가 생기기 때문에 바로 False를 건다.
+
+select num_rows,blocks,avg_row_len -- 통계 수집확인 (sort 작업시 hash가 좋을지 merge가 좋을지 판단)
+from user_tables
+where table_name='EMP';
+
+num_rows  blocks   avg_row_len
+107	     5	   69
+
+[문제110] select문의 실행계획을 확인 한 후 filter를 access로 해결해 주세요.
+
+select * from emp where employee_id = 100;
+
+explain plan for select * from emp where employee_id=100; -- explain 확인
+
+select * from table(dbms_xplan.display(null,null,'typical')); -- filter 확인
+
+alter table emp add constraint emp_id_pk  primary key(employee_id); -- employee_id는 유일한 값으로 존재 하기 때문에 access로 하려면 unique access로 해야한다.
+
+explain plan for select * from emp where employee_id=100; -- explain 확인
+
+select * from table(dbms_xplan.display(null,null,'typical')); -- access 확인
+
+-----------------------------------------------------------------------------------------
+| Id  | Operation                   | Name      | Rows  | Bytes | Cost (%CPU)| Time     |
+-----------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |           |     1 |    69 |     1   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP       |     1 |    69 |     1   (0)| 00:00:01 |
+|*  2 |   INDEX UNIQUE SCAN         | EMP_ID_PK |     1 |       |     0   (0)| 00:00:01 |
+-----------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+
+select * from user_ind_columns where table_name = 'EMP'; -- 인덱스 확인
+
+select * from user_indexes where table_name = 'EMP'; -- 인덱스 확인
+
+
+[문제111] select문의 실행계획을 확인 한 후 filter를 access로 해결해 주세요.
+
+select * from emp where department_id = 10;
+
+explain plan for select * from emp where department_id = 10; -- explain 확인
+
+select * from table(dbms_xplan.display(null,null,'typical')); -- filter 확인
+
+create index emp_dept_id_idx -- 인덱스 생성
+on emp(department_id);
+
+explain plan for select * from emp where department_id = 10; -- explain 확인
+
+select * from table(dbms_xplan.display(null,null,'typical')); -- access 확인
+
+| Id  | Operation                   | Name            | Rows  | Bytes | Cost (%CPU)| Time     |
+-----------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                 |    10 |   690 |     2   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP             |    10 |   690 |     2   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN          | EMP_DEPT_ID_IDX |    10 |       |     1   (0)| 00:00:01 |
+-----------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("DEPARTMENT_ID"=10)
+
+[문제112] select문의 실행계획을 확인 한 후 filter를 access로 해결해 주세요. -- 1. filter filer 2.access filter 3. filter access 4. access access 5. 조합인덱스
+
+select * from emp where last_name = 'King' and first_name = 'Steven';
+
+explain plan for select * from emp where last_name = 'King' and first_name = 'Steven';-- explain 확인
+
+select * from table(dbms_xplan.display(null,null,'typical')); -- filter
+
+--------------------------------------------------------------------------
+| Id  | Operation         | Name | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |      |     1 |    69 |     3   (0)| 00:00:01 |
+|*  1 |  TABLE ACCESS FULL| EMP  |     1 |    69 |     3   (0)| 00:00:01 |
+--------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+PLAN_TABLE_OUTPUT
+-----------------------------------------------------------------------------------------------------------
+
+   1 - filter("LAST_NAME"='King' AND "FIRST_NAME"='Steven')
+
+create index emp_last_name_idx -- last_name 인덱스 생성
+on emp(last_name);
+
+explain plan for select * from emp where last_name = 'King' and first_name = 'Steven'; 
+
+select * from table(dbms_xplan.display(null,null,'typical'));
+
+| Id  | Operation                   | Name              | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                   |     1 |    69 |     2   (0)| 00:00:01 |
+|*  1 |  TABLE ACCESS BY INDEX ROWID| EMP               |     1 |    69 |     2   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN          | EMP_LAST_NAME_IDX |     1 |       |     1   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   1 - filter("FIRST_NAME"='Steven')
+   2 - access("LAST_NAME"='King')
+
+drop index emp_last_name_idx; -- last_name 삭제
+
+create index emp_first_name_idx -- first_name 인덱스 생성
+on emp(first_name);
+explain plan for select * from emp where last_name = 'King' and first_name = 'Steven';
+select * from table(dbms_xplan.display(null,null,'typical'));
+
+| Id  | Operation                   | Name               | Rows  | Bytes | Cost (%CPU)| Time     |
+--------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                    |     1 |    69 |     2   (0)| 00:00:01 |
+|*  1 |  TABLE ACCESS BY INDEX ROWID| EMP                |     1 |    69 |     2   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN          | EMP_FIRST_NAME_IDX |     1 |       |     1   (0)| 00:00:01 |
+--------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   1 - filter("LAST_NAME"='King')
+   2 - access("FIRST_NAME"='Steven')
+
+create index emp_last_name_idx -- last_name 인덱스 생성
+on emp(last_name);
+
+explain plan for select * from emp where last_name = 'King' and first_name = 'Steven';
+select * from table(dbms_xplan.display(null,null,'typical'));
+
+| Id  | Operation                   | Name              | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                   |     1 |    69 |     2   (0)| 00:00:01 |
+|*  1 |  TABLE ACCESS BY INDEX ROWID| EMP               |     1 |    69 |     2   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN          | EMP_LAST_NAME_IDX |     1 |       |     1   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   1 - filter("FIRST_NAME"='Steven')
+   2 - access("LAST_NAME"='King')
+
+
+drop index emp_last_name_idx; -- last_name 삭제
+drop index emp_first_name_idx; -- first_name 삭제
+
+create index emp_first_last_name_idx -- 조합 인덱스 생성
+on emp(last_name,first_name);
+
+explain plan for select * from emp where last_name = 'King' and first_name = 'Steven'; -- explain 실행
+
+| Id  | Operation                   | Name                    | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                         |     1 |    69 |     2   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP                     |     1 |    69 |     2   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN          | EMP_FIRST_LAST_NAME_IDX |     1 |       |     1   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("LAST_NAME"='King' AND "FIRST_NAME"='Steven')
+
+ 
+explain plan for select * from emp where last_name = 'King'; -- 조합인덱스 한 상태에서 where절에 last_name 검색
+
+| Id  | Operation                   | Name                    | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                         |     1 |    69 |     2   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP                     |     1 |    69 |     2   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN          | EMP_FIRST_LAST_NAME_IDX |     1 |       |     1   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("LAST_NAME"='King')
+
+explain plan for select * from emp where first_name = 'Steven';
+
+-------------------------------------------------------------------------------------------------------
+| Id  | Operation                   | Name                    | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                         |     1 |    69 |     2   (0)| 00:00:01 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP                     |     1 |    69 |     2   (0)| 00:00:01 |
+|*  2 |   INDEX SKIP SCAN           | EMP_FIRST_LAST_NAME_IDX |     1 |       |     1   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+# skip scan - 조합인덱스를 하였을 때 선행값을 조건절에 넣지 않고 다음값만 조건을 넣어서 수행 하였을 시 발생하는 scan
+	   - 무조건 생기는 것은 아니다
+	   - skip scan 이 좋은 경우는 선행이 중복성이 많을 때 좋다.
+
+
+[문제113] emp 테이블의 통계 수집을 한 후 전체 row의 수, 사용한 block수, 한 행의 평균 byte 값을 확인 해주세요.
+
+drop table emp  purge;
+
+select rownum emp_id, last_name, first_name, job_id, hire_date, salary, commission_pct, email, department_id
+from employees, (select rownum emp_id from dual connect by level < = 100) -- 계층구조 단계 100번까지 즉 employees 같은거 100개 생성
+order by dbms_random.value;  -- 난수로 
+
+SQL> select bytes,blocks,extents from user_segments where segment_name = 'EMP'; -사용하는 유저의 segments(table)의 총 block 수, 크기, extents 갯수
+
+     BYTES     BLOCKS    EXTENTS
+---------- ---------- ----------
+    786432         96         12
+
+-- 현재 emp가 가지고 있는 extent,blocks,bytes 값을 다 알려준다. (user_segments) segments 사이즈를 알아야할 때 
+
+SQL> select extent_id, bytes, blocks from user_extents where segment_name = 'EMP'; 
+
+ EXTENT_ID      BYTES     BLOCKS
+---------- ---------- ----------
+         0      65536          8
+         1      65536          8
+         2      65536          8
+         3      65536          8
+         4      65536          8
+         5      65536          8
+         6      65536          8
+         7      65536          8
+         8      65536          8
+         9      65536          8
+        10      65536          8
+        11      65536          8
+
+-- 현재사용하고 있는 extent의 크기 , 수 
+
+rownum - fetch 번호
+-- 가상의 emp id 생성,카데시안 곱 발생(join을 하지 않았으므로)
+-- 난수 order by dbms_random.value;
+
+exec dbms_stats.gather_table_stats('hr','emp',no_invalidate=>False);
+
+select num_rows,blocks,avg_row_len -- 통계 수집확인 (sort 작업시 hash가 좋을지 merge가 좋을지 판단)
+from user_tables
+where table_name='EMP';
+
+
+
+[문제114] hr 유저는 sql문을 수행 한 후 실제 수행한 실행계획 처리한 블록의 수를 확인하기위해서 dbms_xplan.display_cursor 사용하려고 할때 필요한 권한은 작성해 주세요.
+
+DBA에서 
+
+grant select on v_$session to hr;
+grant select on v_$sql to hr;
+grant select on v_$sql_plan to hr;
+grant select on v_$sql_plan_statistic to hr;
+grant select on v_$sql_plan_statistic_all to hr;
+
+
+[문제115]이 쿼리문장을 튜닝하기 전과 튜닝한 후를  비교해주세요.
+
+select * from emp where emp_id = 100; -- 검색을 하면 emp_id가 1개임을 알 수 있다.
+
+select /*+ gather_plan_statistics*/ * from hr.emp where hr.emp_id=100; -- 통계적 기법을 사용하기 위한 select 문
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last')); -- 실제 block 처리 확인방법을 쉽게 보기위해 사용하는 select 문
+
+SQL_ID  004btx864pcqq, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics*/ * from hr.emp where emp_id=100
+ 
+Plan hash value: 3956160932
+ 
+------------------------------------------------------------------------------------
+| Id  | Operation         | Name | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |      |      1 |        |      1 |00:00:00.01     |      84 |
+|*  1 |  TABLE ACCESS FULL| EMP  |      1 |      1 |      1 |00:00:00.01    |      84 |
+------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+   1 - filter("EMP_ID"=100)
+
+/*buffers 갯수를 보면 84개이고, table full scan 을 사용한 것을 확인 할 수 있다. 그리고 filter를 사용했는데 위 문제의 emp_id 값을 검색하면 하나만 나오는 것을 
+알 수 있다. 따라서 유일한 값으로 존재하는 것이므로 index unique scan을 사용하는것이 좋다.*/
+
+alter table emp add constraints emp_id_pk primary key(emp_id); -- unique scan 을 사용하기 위해서 primary key 생성
+
+select ix.index_name, ix.uniqueness, ic.column_name -- 테이블에 사용된 index 이름, unique 인지 아닌지 확인, 어떤 컬럼에 설정되어있는지 확인한다.
+     from user_indexes ix, user_ind_columns ic
+     where ix.index_name = ic.index_name
+     and ix.table_name = 'EMP';
+
+select /*+ gather_plan_statistics*/ * from hr.emp where hr.emp_id=100;
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'))
+
+SQL_ID  004btx864pcqq, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics*/ * from hr.emp where emp_id=100
+ 
+Plan hash value: 1252232671
+ 
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                   | Name      | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |           |      1 |        |      1 |00:00:00.01 |       3 |     
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP       |      1 |      1 |      1 |00:00:00.01 |       3 |  
+|*  2 |   INDEX UNIQUE SCAN         | EMP_ID_PK |      1 |      1 |      1 |00:00:00.01 |       2 |  -- root branch 가 하나로 되있거나 root - leaf로 되어있거나
+------------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("EMP_ID"=100)
+
+/*unique index scan을 통해 root-branch-leaf 로 가는 값으로 통해 buffers가 줄어 든것을 확인할수 있다. 또한 access 이므로 값의 위치도 아는 것이므로 훨씬 
+빠른것을 알 수 있다.*/
+
+[문제116] 이 쿼리문장을 튜닝하기 전과 튜닝한 후를  비교해주세요.
+
+SQL> select count(*) from emp where last_name = 'King'; -- 검색을 하면 100개 임을 알 수 있다.
+
+select /*+ gather_plan_statistics*/ count(*) from emp where last_name = 'King';
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+SQL_ID  4nkvumkwx2dp3, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics*/ count(*) from emp where last_name = 
+'King'
+ 
+Plan hash value: 2083865914
+ 
+-------------------------------------------------------------------------------------
+| Id  | Operation          | Name | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |      |      1 |        |      1 |00:00:00.01 |      84 |
+|   1 |  SORT AGGREGATE    |      |      1 |      1 |      1 |00:00:00.01 |      84 |
+|*  2 |   TABLE ACCESS FULL| EMP  |      1 |    105 |    200 |00:00:00.01 |      84 |
+-------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter("LAST_NAME"='King')
+
+/* 115 문제와 마찬가지로 index가 걸려 있지 않아서 table full scan으로 찾게 되고 filter로 찾는 것을 알 수 있다. 따라서 index range 스캔을 통해 찾는다.*/
+
+create index emp_last_name_idx on emp(last_name); -- range index를 사용하기 위해서 index 생성
+
+select /*+ gather_plan_statistics*/ count(*) from emp where last_name = 'King';
+
+SQL_ID  4nkvumkwx2dp3, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics*/ count(*) from emp where last_name = 
+'King'
+ 
+Plan hash value: 3694339738
+ 
+----------------------------------------------------------------------------------------------------------
+| Id  | Operation         | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers | 
+----------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |                   |      1 |        |      1 |00:00:00.02 |       3 |      
+|   1 |  SORT AGGREGATE   |                   |      1 |      1 |      1 |00:00:00.02 |       3 |     -- sort 가 있다고해서 무조건 sort를 하는 것이 아니다. 그룹함수를 쓰면 자동적으로 나온다.
+|*  2 |   INDEX RANGE SCAN| EMP_LAST_NAME_IDX |      1 |    105 |    200 |00:00:00.02 |       3 |  -- 따로 table access를 하지 않아도 되므로 buffers를 사용하지 않아도 된다.
+----------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("LAST_NAME"='King')
+
+[문제117] 이 쿼리문장을 튜닝하기 전과 튜닝한 후를  비교해주세요.
+
+select count(*) from emp where last_name = 'King' and first_name = 'Steven';
+
+select /*+ gather_plan_statistics*/ count(*) from emp where last_name = 'King' and first_name = 'Steven';
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 2083865914
+ 
+-------------------------------------------------------------------------------------
+| Id  | Operation          | Name | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |      |      1 |        |      1 |00:00:00.01 |      84 |
+|   1 |  SORT AGGREGATE    |      |      1 |      1 |      1 |00:00:00.01 |      84 |
+|*  2 |   TABLE ACCESS FULL| EMP  |      1 |      1 |    100 |00:00:00.01 |      84 |
+-------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter(("LAST_NAME"='King' AND "FIRST_NAME"='Steven'))
+
+select /*+ gather_plan_statistics index(e emp_last_name_idx) */ count(*) from emp e where last_name = 'King' and first_name = 'Steven';
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last')); 
+
+SQL_ID  bbwbxs6vhb7dv, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics index(e emp_last_name_idx) */ 
+count(*) from emp e where last_name = 'King' and first_name = 'Steven'
+ 
+Plan hash value: 1760378265
+ 
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                   |      1 |        |      1 |00:00:00.01 |      80 |
+|   1 |  SORT AGGREGATE              |                   |      1 |      1 |      1 |00:00:00.01 |      80 |
+|*  2 |   TABLE ACCESS BY INDEX ROWID| EMP               |      1 |    100 |    100 |00:00:00.01 |      80 |
+|*  3 |    INDEX RANGE SCAN          | EMP_LAST_NAME_IDX |      1 |    105 |    200 |00:00:00.01 |       3 |
+------------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+create index emp_last_first_name_idx -- 조합인덱스 생성 , 선행값은 1.=(같다), 2.혼자서 자주쓰는 컬럼 3. 중복성이 많은 값 4. 폭이 좁은 값 
+on emp(last_name,first_name);
+
+select /*+ gather_plan_statistics*/ count(*) from emp where last_name = 'King' and first_name = 'Steven';
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last')); 
+
+SQL_ID  a97dt061gw420, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics*/ count(*) from emp where last_name = 
+'King' and first_name = 'Steven'
+ 
+Plan hash value: 709845245
+ 
+-------------------------------------------------------------------------------------------------------
+| Id  | Operation         | Name                    | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |                         |      1 |        |      1 |00:00:00.01 |       3 |
+|   1 |  SORT AGGREGATE   |                         |      1 |      1 |      1 |00:00:00.01 |       3 |
+|*  2 |   INDEX RANGE SCAN| EMP_LAST_FIRST_NAME_IDX |      1 |    100 |    100 |00:00:00.01 |       3 |
+-------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("LAST_NAME"='King' AND "FIRST_NAME"='Steven')
+
+--선행컬럼 1. 같다. 2. 혼자서 자주 사용하는 값 3. 좁은 값 4. 중복성값
+
+[문제118] emp 테이블에 있는 데이터 중에 2001년도 입사한 사원들의 인원수를 조회하는 쿼리문장을 만드시고 성능이 나도록 구성하세요.
+
+select count(*) from emp where hire_date>=to_date('2001-01-01','yyyy-mm-dd') and hire_date<to_date('2002-01-01','yyyy-mm-dd')  ; -- 날짜 비교이므로 to_Char 아닌걸로 비교
+
+select /*+ gather_plan_statistics*/ count(*) from emp where hire_date>=to_date('2001-01-01','yyyy-mm-dd') and hire_date<to_date('2002-01-01','yyyy-mm-dd')  ;
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last')); 
+
+SQL_ID  3cwv9hzrz5v1z, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics*/  count(*) from emp where 
+to_char(hire_date,'yyyy')='2001'
+ 
+Plan hash value: 2083865914
+ 
+-------------------------------------------------------------------------------------
+| Id  | Operation          | Name | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT   |      |      1 |        |      1 |00:00:00.01 |      84 |
+|   1 |  SORT AGGREGATE    |      |      1 |      1 |      1 |00:00:00.01 |      84 |
+|*  2 |   TABLE ACCESS FULL| EMP  |      1 |    107 |    100 |00:00:00.01 |      84 |
+-------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter(TO_CHAR(INTERNAL_FUNCTION("HIRE_DATE"),'yyyy')='2001')
+
+create index emp_hire_date_idx on emp (hire_date);create index emp_hire_date_idx
+on emp(hire_date);
+
+select /*+ gather_plan_statistics*/ count(*) from emp where hire_date>=to_date('2001-01-01','yyyy-mm-dd') and hire_date<to_date('2002-01-01','yyyy-mm-dd')  ;
+
+SQL_ID  4ugnbdb7hwm8v, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics*/ count(*) from emp where 
+hire_date>=to_date('2001-01-01','yyyy-mm-dd') and 
+hire_date<to_date('2002-01-01','yyyy-mm-dd')
+ 
+Plan hash value: 3869331932
+ 
+-------------------------------------------------------------------------------------------------
+| Id  | Operation         | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |                   |      1 |        |      1 |00:00:00.01 |       2 |
+|   1 |  SORT AGGREGATE   |                   |      1 |      1 |      1 |00:00:00.01 |       2 |
+|*  2 |   INDEX RANGE SCAN| EMP_HIRE_DATE_IDX |      1 |   1419 |    100 |00:00:00.01 |       2 |
+-------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("HIRE_DATE">=TO_DATE(' 2001-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND 
+              "HIRE_DATE"<TO_DATE(' 2002-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+ 
+
+[문제119] emp 테이블에 있는 데이터 중에 2003년도 입사한 사원들 중에 10번 부서 인원수를 조회하는 쿼리문장을 만드시고 성능이 나도록 구성하세요
+
+select count(*) from emp where hire_date>=to_date('2003-01-01','yyyy-mm-dd') and hire_date<to_date('2004-01-01','yyyy-mm-dd')  and department_id=10;
+
+select /*+ gather_plan_statistics index(e emp_hire_date_idx)*/ count(*) 
+from emp e 
+where hire_date>=to_date('2003-01-01','yyyy-mm-dd') and hire_date<to_date('2004-01-01','yyyy-mm-dd')  and department_id=10; 
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last')); 
+
+-------------------------------------
+select /*+ gather_plan_statistics index(e emp_hire_date_idx)*/ count(*) 
+from emp e where hire_date>=to_date('2003-01-01','yyyy-mm-dd') and 
+hire_date<to_date('2004-01-01','yyyy-mm-dd')  and department_id=10
+ 
+Plan hash value: 2682255223
+ 
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                   |      1 |        |      1 |00:00:00.01 |     352 |
+|   1 |  SORT AGGREGATE              |                   |      1 |      1 |      1 |00:00:00.01 |     352 |
+|*  2 |   TABLE ACCESS BY INDEX ROWID| EMP               |      1 |    142 |    100 |00:00:00.01 |     352 | -- 과부하 발생 
+|*  3 |    INDEX RANGE SCAN          | EMP_HIRE_DATE_IDX |      1 |   1576 |    600 |00:00:00.01 |       3 |
+------------------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter("DEPARTMENT_ID"=10)
+   3 - access("HIRE_DATE">=TO_DATE(' 2003-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND 
+              "HIRE_DATE"<TO_DATE(' 2004-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+ 
+create index emp_hire_dept_idx on emp(department_id,hire_date); -- 날짜는 비교가 가능하므로 department_id를 선행으로 한다. 
+
+select /*+ gather_plan_statistics*/ count(*) from emp where 
+hire_date>=to_date('2003-01-01','yyyy-mm-dd') and 
+hire_date<to_date('2003-12-31','yyyy-mm-dd')  and department_id=10
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last')); 
+ 
+Plan hash value: 3667519247
+ 
+-------------------------------------------------------------------------------------------------
+| Id  | Operation         | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |                   |      1 |        |      1 |00:00:00.01 |       2 |
+|   1 |  SORT AGGREGATE   |                   |      1 |      1 |      1 |00:00:00.01 |       2 |
+|*  2 |   INDEX RANGE SCAN| EMP_HIRE_DEPT_IDX |      1 |    142 |    100 |00:00:00.01 |       2 | -- 그냥 단일인덱스는 null값을 포함하지 않는다. 
+										        그러나 조합인덱스는 null을 포함한다 (조합에 따라)
+-------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("DEPARTMENT_ID"=10 AND "HIRE_DATE">=TO_DATE(' 2003-01-01 00:00:00', 
+              'syyyy-mm-dd hh24:mi:ss') AND "HIRE_DATE"<TO_DATE(' 2004-01-01 00:00:00', 'syyyy-mm-dd 
+              hh24:mi:ss'))
+ 
+[문제120] 아래 쿼리문장을 문제118번에서 만든 인덱스를 사용할때와  문제119번에 만든 인덱스를 사용할때를 비교하세요. -- skip scan 유도
+
+select count(*) from emp where hire_date >= to_date('2001-01-01','yyyy-mm-dd') and hire_date < to_date('2002-01-01','yyyy-mm-dd');
+
+select /*+ gather_plan_statistics index(emp_hire_date_idx)*/ count(*) 
+from emp where hire_date >= to_date('2001-01-01','yyyy-mm-dd') and hire_date < to_date('2002-01-01','yyyy-mm-dd');
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last')); 
+
+SQL_ID  1tbrcg9cgzm3y, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics index(emp_hire_date_idx)*/ count(*)   
+from emp where hire_date >= to_date('2001-01-01','yyyy-mm-dd') and 
+hire_date < to_date('2002-01-01','yyyy-mm-dd')
+ 
+Plan hash value: 3869331932
+ 
+-------------------------------------------------------------------------------------------------
+| Id  | Operation         | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |                   |      1 |        |      1 |00:00:00.01 |       2 |
+|   1 |  SORT AGGREGATE   |                   |      1 |      1 |      1 |00:00:00.01 |       2 |
+|*  2 |   INDEX RANGE SCAN| EMP_HIRE_DATE_IDX |      1 |   1423 |    100 |00:00:00.01 |       2 |
+-------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("HIRE_DATE">=TO_DATE(' 2001-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss') AND 
+              "HIRE_DATE"<TO_DATE(' 2002-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+ 
+select /*+ gather_plan_statistics index_ss(e emp_hire_dept_idx)*/ count(*)   
+from emp e where hire_date >= to_date('2001-01-01','yyyy-mm-dd') and 
+hire_date < to_date('2002-01-01','yyyy-mm-dd')
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last')); 
+
+
+SQL_ID  0nmdv3d4d5m8s, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics index_ss(emp_hire_dept_idx)*/ count(*)   
+from emp where hire_date >= to_date('2001-01-01','yyyy-mm-dd') and 
+hire_date < to_date('2002-01-01','yyyy-mm-dd')
+ 
+SQL_ID  12xxbyqubtd1s, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics index_ss(e emp_hire_dept_idx)*/ 
+count(*)     from emp e where hire_date >= 
+to_date('2001-01-01','yyyy-mm-dd') and   hire_date < 
+to_date('2002-01-01','yyyy-mm-dd')
+ 
+Plan hash value: 1242521799
+ 
+------------------------------------------------------------------------------------------------
+| Id  | Operation        | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT |                   |      1 |        |      1 |00:00:00.01 |      10 |
+|   1 |  SORT AGGREGATE  |                   |      1 |      1 |      1 |00:00:00.01 |      10 |
+|*  2 |   INDEX SKIP SCAN| EMP_HIRE_DEPT_IDX |      1 |   1423 |    100 |00:00:00.01 |      10 |
+------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - access("HIRE_DATE">=TO_DATE(' 2001-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss') 
+              AND "HIRE_DATE"<TO_DATE(' 2002-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss'))
+       filter(("HIRE_DATE"<TO_DATE(' 2002-01-01 00:00:00', 'syyyy-mm-dd hh24:mi:ss') 
+
+
+[문제121] 쿼리문장을 확인하시고 튜닝하세요. -- sql 문장 재구성 
+
+SQL> select count(*) from emp where substr(last_name,1,2) = 'Ba';
+
+select /*+ gather_plan_statistics */ count(*) from emp where substr(last_name,1,2) = 'Ba';
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last')); 
+
+SQL_ID  5nbvsbgw8vr13, child number 1
+-------------------------------------
+select /*+ gather_plan_statistics */ count(*) from emp where 
+substr(last_name,1,2) = 'Ba';
+ 
+Plan hash value: 608142087
+ 
+-----------------------------------------------------------------------------------------------------
+| Id  | Operation             | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-----------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT      |                   |      1 |        |      1 |00:00:00.01 |      32 |
+|   1 |  SORT AGGREGATE       |                   |      1 |      1 |      1 |00:00:00.01 |      32 |
+|*  2 |   INDEX FAST FULL SCAN| EMP_LAST_NAME_IDX |      1 |    107 |    400 |00:00:00.01 |      32 |
+-----------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter(SUBSTR("LAST_NAME",1,2)='Ba')
+ 
+Note
+-----
+   - cardinality feedback used for this statement
+ 
+select /*+ gather_plan_statistics  */ count(*) from emp e where last_name like 'Ba%';
+
+SQL_ID  3cqh3byns9yyb, child number 0
+-------------------------------------
+select /*+ gather_plan_statistics  */ count(*) from emp e where 
+last_name like 'Ba%'
+ 
+Plan hash value: 3694339738
+ 
+-------------------------------------------------------------------------------------------------
+| Id  | Operation         | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |                   |      1 |        |      1 |00:00:00.01 |       3 |
+|   1 |  SORT AGGREGATE   |                   |      1 |      1 |      1 |00:00:00.01 |       3 |
+|*  2 |   INDEX RANGE SCAN| EMP_LAST_NAME_IDX |      1 |    107 |    400 |00:00:00.01 |       3 |
+-------------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+   2 - access("LAST_NAME" LIKE 'Ba%') -- index로 다가가지만 그다음 글자는 뭔지 모르기 때문에 filter도 포함이 된다.
+       filter("LAST_NAME" LIKE 'Ba%')
+
+SQL> drop table emp purge;
+
+Table dropped.
+
+SQL> create table emp as select * from employees;
+
+
+Table created.
+
+SQL> drop table dept purge;
+
+Table dropped.
+
+
+SQL> create table dept as select * from departments; 
+
+Table created.
+
+SQL> drop table loc purge;
+
+Table dropped.
+
+
+SQL> create table loc as select * from locations;
+ 
+Table created.
+
+[문제122] 테이블 통계 수집을 하시고 컬럼 정보를 확인 하세요.
+
+SQL> select table_name, num_rows, blocks, avg_row_len, last_analyzed from user_tables where table_name in('EMP','DEPT','LOC');
+
+TABLE_NAME                       NUM_ROWS     BLOCKS AVG_ROW_LEN LAST_ANAL
+------------------------------ ---------- ---------- ----------- ---------
+LOC
+EMP
+DEPT
+
+SQL> alter session set statistics_level=all;
+
+SQL> exec dbms_stats.gather_table_stats('hr','emp')
+
+PL/SQL procedure successfully completed.
+
+SQL> exec dbms_stats.gather_table_stats('hr','dept')
+
+PL/SQL procedure successfully completed.
+
+SQL> exec dbms_stats.gather_table_stats('hr','loc')
+
+PL/SQL procedure successfully completed.
+
+SQL> select table_name, num_rows, blocks, avg_row_len, last_analyzed from user_tables where table_name in('EMP','DEPT','LOC');
+
+TABLE_NAME                                                     NUM_ROWS     BLOCKS AVG_ROW_LEN LAST_ANA
+------------------------------------------------------------ ---------- ---------- ----------- --------
+DEPT                                                                 27          4          21 18/06/27
+EMP                                                                 107          5          69 18/06/27
+LOC                                                                  23          4          49 18/06/27
+
+
+[문제123] SQL문장의 실행계획을 확인 한 후 nested loop join 으로 튜닝하세요.
+
+SQL> select  e.last_name, e.job_id, d.department_name, l.city
+from emp e, dept d, loc l
+where e.department_id = d.department_id
+and d.location_id = l.location_id
+and e.employee_id = 100
+
+
+Plan hash value: 249086025
+
+-------------------------------------------------------------------------------------------------------------------
+| Id  | Operation             | Name | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT      |      |      1 |        |      1 |00:00:00.01 |       8 |       |       |          |
+|*  1 |  HASH JOIN            |      |      1 |      1 |      1 |00:00:00.01 |       8 |   927K|   927K| 1235K (0)| -- sort 할때 메모리 값, 낮에 빨리 찾아야한다면 hash랑 merge 함수는 튜닝 대상이다.
+|   2 |   MERGE JOIN CARTESIAN|      |      1 |     23 |     23 |00:00:00.01 |       5 |       |       |          |
+|*  3 |    TABLE ACCESS FULL  | EMP  |      1 |      1 |      1 |00:00:00.01 |       3 |       |       |          |
+|   4 |    BUFFER SORT        |      |      1 |     23 |     23 |00:00:00.01 |       2 |  2048 |  2048 | 2048  (0)|
+|   5 |     TABLE ACCESS FULL | LOC  |      1 |     23 |     23 |00:00:00.01 |       2 |       |       |          |
+|   6 |   TABLE ACCESS FULL   | DEPT |      1 |     27 |     27 |00:00:00.01 |       3 |       |       |          |
+-------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID" AND "D"."LOCATION_ID"="L"."LOCATION_ID") -- 메모리에서 작업을해서 access로 나온것이다.
+   3 - filter("E"."EMPLOYEE_ID"=100)
+
+
+alter table emp add constraints emp_id_pk primary key(employee_id);
+alter table emp add constraints emp_id_pk primary key(department_id);
+create index loc_id_idx on loc(location_id);
+
+SQL> select  e.last_name, e.job_id, d.department_name, l.city
+from emp e, dept d, loc l
+where e.department_id = d.department_id
+and d.location_id = l.location_id
+and e.employee_id = 100
+
+
+Plan hash value: 2766492017
+
+-------------------------------------------------------------------------------------------------------
+| Id  | Operation                     | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT              |             |      1 |        |      1 |00:00:00.01 |       7 |
+|   1 |  NESTED LOOPS                 |             |      1 |      1 |      1 |00:00:00.01 |       7 |
+|   2 |   NESTED LOOPS                |             |      1 |      1 |      1 |00:00:00.01 |       4 |
+|   3 |    TABLE ACCESS BY INDEX ROWID| EMP         |      1 |      1 |      1 |00:00:00.01 |       2 | --active set 결과
+|*  4 |     INDEX UNIQUE SCAN         | EMP_ID_PK   |      1 |      1 |      1 |00:00:00.01 |       1 |
+|   5 |    TABLE ACCESS BY INDEX ROWID| DEPT        |      1 |     27 |      1 |00:00:00.01 |       2 |
+|*  6 |     INDEX UNIQUE SCAN         | DEPT_ID_IDX |      1 |      1 |      1 |00:00:00.01 |       1 |
+|*  7 |   TABLE ACCESS FULL           | LOC         |      1 |      1 |      1 |00:00:00.01 |       3 |
+-------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("E"."EMPLOYEE_ID"=100)
+   6 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+   7 - filter("D"."LOCATION_ID"="L"."LOCATION_ID")
+
+[문제124] SQL문장의 실행계획을 확인 한 후 NESTED LOOP JOIN으로 튜닝하세요. -- index는 무조건 거는게 아니라 값을 찾아보고 판단해서 index설계를 한다.
+
+SQL> select e.last_name, e.job_id, d.department_name, l.city
+from emp e, dept d, loc l
+where e.department_id = d.department_id
+and d.location_id = l.location_id 
+and l.city = 'Seattle';
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 2355362928
+
+---------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                     | Name       | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+---------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT              |            |      1 |        |     18 |00:00:00.01 |       9 |       |       |          |
+|*  1 |  HASH JOIN                    |            |      1 |     15 |     18 |00:00:00.01 |       9 |   972K|   972K| 1245K (0)|
+|   2 |   MERGE JOIN                  |            |      1 |      4 |     21 |00:00:00.01 |       4 |       |       |          |
+|*  3 |    TABLE ACCESS BY INDEX ROWID| LOC        |      1 |      1 |      1 |00:00:00.01 |       2 |       |       |          |
+|   4 |     INDEX FULL SCAN           | LOC_ID_IDX |      1 |     23 |     23 |00:00:00.01 |       1 |       |       |          |
+|*  5 |    SORT JOIN                  |            |      1 |     27 |     21 |00:00:00.01 |       2 |  2048 |  2048 | 2048  (0)|
+|   6 |     TABLE ACCESS FULL         | DEPT       |      1 |     27 |     27 |00:00:00.01 |       2 |       |       |          |
+|   7 |   TABLE ACCESS FULL           | EMP        |      1 |    107 |    107 |00:00:00.01 |       5 |       |       |          |
+---------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+   3 - filter("L"."CITY"='Seattle')
+   5 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+       filter("D"."LOCATION_ID"="L"."LOCATION_ID")
+
+
+alter table loc add constraints loc_city_pk primary key(city);
+create index dept_loc_id_idx on dept(location_id);
+create index emp_dept_id_idx on emp(department_id);
+
+
+SQL> select e.last_name, e.job_id, d.department_name, l.city
+from emp e, dept d, loc l
+where e.department_id = d.department_id
+and d.location_id = l.location_id
+and l.city = 'Seattle';
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 3100615632
+
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name            | Starts | E-Rows | A-Rows |   A-Time   | Buffers | -- inner가 range가 발생하면 nested가 한번더 발생
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |                 |      1 |        |     18 |00:00:00.01 |   17 |
+|   1 |  NESTED LOOPS                  |                 |      1 |        |     18 |00:00:00.01 |   17 |
+|   2 |   NESTED LOOPS                 |                 |      1 |     15 |     18 |00:00:00.01 |   14 | -- batch 발생 > 사원테이블의 employee_id 만 먼저 검색
+|   3 |    NESTED LOOPS                |                 |      1 |      4 |     21 |00:00:00.01 |    8 |
+|   4 |     TABLE ACCESS BY INDEX ROWID| LOC             |      1 |      1 |      1 |00:00:00.01 |    2 |-- l.location_id를 찾기 위해서 
+|*  5 |      INDEX UNIQUE SCAN         | LOC_CITY_PK     |      1 |      1 |      1 |00:00:00.01 |    1 | -- 이미 city rowid를 가지고있다.
+|   6 |     TABLE ACCESS BY INDEX ROWID| DEPT            |      1 |      4 |     21 |00:00:00.01 |    6 |
+|*  7 |      INDEX RANGE SCAN          | DEPT_LOC_ID_IDX |      1 |      4 |     21 |00:00:00.01 |    3 |
+|*  8 |    INDEX RANGE SCAN            | EMP_DEPT_ID_IDX |     21 |     10 |     18 |00:00:00.01 |    6 | - 3번으로 통해 batch가 끝난것을 알수 있다. 18개값 
+|   9 |   TABLE ACCESS BY INDEX ROWID  | EMP             |     18 |      4 |     18 |00:00:00.01 |    3 |
+------------------------------------------------------------------------------------------------------------
+
+reads가 뜨지않으면 disk에서 가져간것이 아니다.
+즉, 3번이 나타난건 memory에서 해결을 하는 것이다.
+nested 하고 index range가 연결되면 batch 이다. ( 즉 , 3 8 번을 2번으로 푼다라는걸 확인하면 table access가 없기 때문에 batch를 유추할 수 있다.)
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   5 - access("L"."CITY"='Seattle')
+   7 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+   8 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+쪼개서 확인
+
+select * from loc where city='Seattle';
+
+select * from dept where location_id = 1700;
+
+select * from emp where department_id in (10,30,90,100,110);
+
+
+-- batch가 걸리지 않은 경우 : 8번에서 7번으로 하면 바로 i/o가 일어난다. 
+
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name            | Starts | E-Rows | A-Rows |   A-Time   | Buffers | 
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |                 |      1 |        |     18 |00:00:00.01 |   17 |
+|   1 |   NESTED LOOPS                 |                 |      1 |     15 |     18 |00:00:00.01 |   14 | 
+|   2 |    NESTED LOOPS                |                 |      1 |      4 |     21 |00:00:00.01 |    8 |
+|   3 |     TABLE ACCESS BY INDEX ROWID| LOC             |      1 |      1 |      1 |00:00:00.01 |    2 |
+|*  4 |      INDEX UNIQUE SCAN         | LOC_CITY_PK     |      1 |      1 |      1 |00:00:00.01 |    1 | 
+|   5 |     TABLE ACCESS BY INDEX ROWID| DEPT            |      1 |      4 |     21 |00:00:00.01 |    6 |
+|*  6 |      INDEX RANGE SCAN          | DEPT_LOC_ID_IDX |      1 |      4 |     21 |00:00:00.01 |    3 |
+|   7 |    TABLE ACCESS BY INDEX ROWID  | EMP             |     18 |      4 |     18 |00:00:00.01 |    3 |
+|*  8 |     INDEX RANGE SCAN            | EMP_DEPT_ID_IDX |     21 |     10 |     18 |00:00:00.01 |    6 |  
+------------------------------------------------------------------------------------------------------------
+
+   4 - access("L"."CITY"='Seattle')
+   6 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+   8 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+select d.department_id, d.department, l.city 2번 결과  (active set 한것도 생각해야함)
+from dept d, loc c
+where d.location_id=l.location_id
+and l.city='Seattle';
+
+select rowid from emp where department_id in (10,30,90,100,110);-  이값을 batch 해놓는것이다. 즉, rowid를 통해 한번에 값을 가져간다. multi i/o가 나타나도록
+
+i/o 수는 prefetch 와 batch 는 같다.
+
+[문제125] SQL문장의 실행계획을 확인 한 후 튜닝하세요.
+
+SQL> select  e.last_name, e.job_id, d.department_name, l.city
+from emp e, dept d, loc l
+where e.department_id = d.department_id
+and d.location_id = l.location_id
+and l.city = 'Seattle'
+and e.job_id = 'AD_VP';  
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+
+Plan hash value: 3100615632
+
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name            | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |                 |      1 |        |      2 |00:00:00.01 |   15 |
+|   1 |  NESTED LOOPS                  |                 |      1 |        |      2 |00:00:00.01 |   15 |
+|   2 |   NESTED LOOPS                 |                 |      1 |      1 |     18 |00:00:00.01 |   11 |
+|   3 |    NESTED LOOPS                |                 |      1 |      4 |     21 |00:00:00.01 |    6 |
+|   4 |     TABLE ACCESS BY INDEX ROWID| LOC             |      1 |      1 |      1 |00:00:00.01 |    2 |
+|*  5 |      INDEX UNIQUE SCAN         | LOC_CITY_PK     |      1 |      1 |      1 |00:00:00.01 |    1 |
+|   6 |     TABLE ACCESS BY INDEX ROWID| DEPT            |      1 |      4 |     21 |00:00:00.01 |    4 |
+|*  7 |      INDEX RANGE SCAN          | DEPT_LOC_ID_IDX |      1 |      4 |     21 |00:00:00.01 |    2 |
+|*  8 |    INDEX RANGE SCAN            | EMP_DEPT_ID_IDX |     21 |     10 |     18 |00:00:00.01 |    5 |
+|*  9 |   TABLE ACCESS BY INDEX ROWID  | EMP             |     18 |      1 |      2 |00:00:00.01 |    4 | -- 버릴 값이 너무 많다. 2번에서 9번을 올때 18개에서 2개
+											해결: 2건을 찾아서 하는 것이 더 빠르지 않겠는가
+------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   5 - access("L"."CITY"='Seattle')
+   7 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+   8 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+   9 - filter("E"."JOB_ID"='AD_VP')
+
+create index emp_job_id_idx on emp(job_id);
+
+select /*+ leading(e,d,l) use_nl(d) use_nl(l) */  e.last_name, e.job_id, d.department_name, l.city
+from emp e, dept d, loc l
+where e.department_id = d.department_id
+and d.location_id = l.location_id
+and l.city = 'Seattle'
+and e.job_id = 'AD_VP';  
+
+-----------------------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name           | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-----------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |                |      1 |        |      2 |00:00:00.01 |      12 |
+|   1 |  NESTED LOOPS                  |                |      1 |        |      2 |00:00:00.01 |      12 |
+|   2 |   NESTED LOOPS                 |                |      1 |      1 |      2 |00:00:00.01 |      10 |
+|   3 |    NESTED LOOPS                |                |      1 |      6 |      2 |00:00:00.01 |    8 |
+|   4 |     TABLE ACCESS BY INDEX ROWID| EMP            |      1 |      6 |      2 |00:00:00.01 |    4 |
+|*  5 |      INDEX RANGE SCAN          | EMP_JOB_ID_IDX |      1 |      6 |      2 |00:00:00.01 |    2 |
+|   6 |     TABLE ACCESS BY INDEX ROWID| DEPT           |      2 |      1 |      2 |00:00:00.01 |    4 |
+|*  7 |      INDEX UNIQUE SCAN         | DEPT_ID_IDX    |      2 |      1 |      2 |00:00:00.01 |    2 |
+|*  8 |    INDEX UNIQUE SCAN           | LOC_CITY_PK    |      2 |      1 |      2 |00:00:00.01 |    2 |
+|*  9 |   TABLE ACCESS BY INDEX ROWID  | LOC            |      2 |      1 |      2 |00:00:00.01 |    2 |
+-----------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   5 - access("E"."JOB_ID"='AD_VP')
+   7 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+   8 - access("L"."CITY"='Seattle')
+   9 - filter("D"."LOCATION_ID"="L"."LOCATION_ID")
+
+
+SQL> select /*+ leading(e,d,l) use_nl(d) use_nl_with_index(l loc_loc_id_idx) */ e.last_name, e.job_id, d.department_name, l.city
+from emp e, dept d, loc l
+where e.department_id = d.department_id
+and d.location_id = l.location_id
+and l.city = 'Seattle'
+and e.job_id = 'AD_VP';  
+
+Plan hash value: 4088754358
+
+-----------------------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name           | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-----------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |                |      1 |        |      2 |00:00:00.01 |      13 |
+|   1 |  NESTED LOOPS                  |                |      1 |        |      2 |00:00:00.01 |      13 |
+|   2 |   NESTED LOOPS                 |                |      1 |      1 |      2 |00:00:00.01 |      11 |
+|   3 |    NESTED LOOPS                |                |      1 |      6 |      2 |00:00:00.01 |    8 |
+|   4 |     TABLE ACCESS BY INDEX ROWID| EMP            |      1 |      6 |      2 |00:00:00.01 |    4 |
+|*  5 |      INDEX RANGE SCAN          | EMP_JOB_ID_IDX |      1 |      6 |      2 |00:00:00.01 |    2 |
+|   6 |     TABLE ACCESS BY INDEX ROWID| DEPT           |      2 |      1 |      2 |00:00:00.01 |    4 |
+|*  7 |      INDEX UNIQUE SCAN         | DEPT_ID_IDX    |      2 |      1 |      2 |00:00:00.01 |    2 |
+|*  8 |    INDEX RANGE SCAN            | LOC_LOC_ID_IDX |      2 |      1 |      2 |00:00:00.01 |    3 |
+|*  9 |   TABLE ACCESS BY INDEX ROWID  | LOC            |      2 |      1 |      2 |00:00:00.01 |    2 |
+-----------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   5 - access("E"."JOB_ID"='AD_VP')
+   7 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+   8 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+   9 - filter("L"."CITY"='Seattle')
+
+select /*+ leading(l,d,e) use_nl(d) use_nl_with_index(e job_emp_id_idx) */ e.last_name, e.job_id, d.department_name, l.city
+from emp e, dept d, loc l
+where e.department_id = d.department_id
+
+-----------------------------------------------------------------------------------------------------------
+| Id  | Operation                     | Name            | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-----------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT              |                 |      1 |        |      2 |00:00:00.01 |      11 |
+|   1 |  NESTED LOOPS                 |                 |      1 |      1 |      2 |00:00:00.01 |      11 |
+|   2 |   NESTED LOOPS                |                 |      1 |      6 |      2 |00:00:00.01 |    8 |
+|   3 |    TABLE ACCESS BY INDEX ROWID| EMP             |      1 |      6 |      2 |00:00:00.01 |    4 |
+|*  4 |     INDEX RANGE SCAN          | EMP_JOB_ID_IDX  |      1 |      6 |      2 |00:00:00.01 |    2 |
+|   5 |    TABLE ACCESS BY INDEX ROWID| DEPT            |      2 |      1 |      2 |00:00:00.01 |    4 |
+|*  6 |     INDEX UNIQUE SCAN         | DEPT_ID_IDX     |      2 |      1 |      2 |00:00:00.01 |    2 |
+|*  7 |   INDEX RANGE SCAN            | LOC_ID_CITY_IDX |      2 |      1 |      2 |00:00:00.01 |    3 |
+-----------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("E"."JOB_ID"='AD_VP')
+   6 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+   7 - access("D"."LOCATION_ID"="L"."LOCATION_ID" AND "L"."CITY"='Seattle')
+
+and d.location_id = l.location_id
+and l.city = 'Seattle'
+and e.job_id = 'AD_VP'; 
+
+create index loc_id_city_idx on loc(location_id, city);
+
+select /*+ leading(e,d,l) use_nl(d) use_nl(l) */ e.last_name, e.job_id, d.department_name, l.city
+from emp e, dept d, loc l
+where e.department_id = d.department_id
+and d.location_id = l.location_id
+and l.city = 'Seattle'
+and e.job_id = 'AD_VP';  
+
+[문제126] SQL문장의 실행계획을 확인 한 후 sort merge join의 방법으로 튜닝하세요.
+
+SQL> select /*+ leading(l,d,e) use_nl(d) use_nl(e)  */ e.last_name, e.first_name, e.salary, e.job_id, d.department_name, l.city, l.street_address
+from employees e, departments d, locations l
+where d.department_id = e.department_id
+and d.location_id = l.location_id;
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 3501946382
+
+-----------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                                | Name                     | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |
+-----------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                    |                             |      1 |           |    106   |00:00:00.02 |   54 |        12 |
+|   1 |  NESTED LOOPS                         |                             |      1 |           |    106   |00:00:00.02 |   54 |        12 | 
+|   2 |   NESTED LOOPS                        |                             |      1 |    106   |    106   |00:00:00.02 |   41 |         9 | -- 과부하 (1~106개) (사원정보 x)  사원정보는 rowid만
+|   3 |    NESTED LOOPS                       |                             |      1 |     27   |     27   |00:00:00.02  |   27 |         8 | -- 4 조인된 결과값 (사원으로 전달) 여기도 과부하
+|   4 |     TABLE ACCESS FULL                | LOCATIONS              |      1 |     23   |     23   |00:00:00.01  |   11 |         6 | --city값과 street_address값을 가져와야함 1
+|   5 |     TABLE ACCESS BY INDEX ROWID| DEPARTMENTS          |     23 |      1   |     27   |00:00:00.01  |   16 |         2 | -- 3 department_name 값도 가져오고
+|*  6 |      INDEX RANGE SCAN              | DEPT_LOCATION_IX    |     23 |      4   |     27   |00:00:00.01  |   11 |         1 | -- 2 -- 23번 location_id 로 전달
+|*  7 |    INDEX RANGE SCAN                | EMP_DEPARTMENT_IX |     27 |     10   |    106   |00:00:00.01 |   14 |         1 | -- 5 사원테이블 이동 (27번이동하지만 실제 106건)
+|   8 |   TABLE ACCESS BY INDEX ROWID  | EMPLOYEES              |    106 |      4   |    106   |00:00:00.01 |   13 |         3 | -- employees 값 가져옴
+-----------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   6 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+   7 - access("D"."DEPARTMENT_ID"="E"."DEPARTMENT_ID")
+
+SQL> select /*+ leading(l,d,e) use_merge(d) use_merge(e)  */ e.last_name, e.first_name, e.salary, e.job_id, d.department_name, l.city, l.street_address
+from employees e, departments d, locations l
+where d.department_id = e.department_id
+and d.location_id = l.location_id;
+
+★ second 에 해당하는 부서값은 왜 sorting을 하는가 : second 에서 location값이 m족이므로 최대 row수 만큼 i/o가 발생할 수 있기 때문에 차라리 full scan으로 해서 순서대로나오게 한다.
+★ 다음 값을 sort join 하는 이유는 sort 하는 기준의 값이 달라지기 때문에 (2번하고 8번 할때 ) location_id 로 기준이 였던 값을 department 값으로 바꿔줘야 하기 떄문에 sort를 해야한다.
+
+Plan hash value: 4101717352 
+
+-----------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                               | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-----------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                    |              |      1 |        |    106 |00:00:00.01 |      14 |       |       |          |
+|   1 |  MERGE JOIN                         |              |      1 |    106 |    106 |00:00:00.01 |      14 |       |       |          | -- 3번의 결과를 가지고 first
+|   2 |   SORT JOIN                         |              |      1 |     27 |     27 |00:00:00.01 |       8 |  4096 |  4096 | 4096  (0)| --3번가지고 sort
+|   3 |    MERGE JOIN                       |              |      1 |     27 |     27 |00:00:00.01 |       8 |       |       |          | --1--first
+|   4 |     TABLE ACCESS BY INDEX ROWID| LOCATIONS   |     |      1 |     23 |     19 |00:00:00.01 |       2 |       |       |          | --first (2700 이후에 큰값은 필요가 없어서 19개로 한다.)
+|   5 |      INDEX FULL SCAN                | LOC_ID_PK    |      1 |     23 |     19 |00:00:00.01 |       1 |       |       |          |
+|*  6 |     SORT JOIN                       |              |     19 |     27 |     27 |00:00:00.01 |       6 |  2048 |  2048 | 2048  (0)| -- second
+|   7 |      TABLE ACCESS FULL              | DEPARTMENTS  |     1  |     27 |     27 |00:00:00.01 |       6 |       |       |          |
+|*  8 |   SORT JOIN                         |              |     27 |    107 |    106 |00:00:00.01 |       6 | 18432 | 18432 |16384  (0)| ----second
+|   9 |    TABLE ACCESS FULL                | EMPLOYEES    |      1 |    107 |    107 |00:00:00.01 |       6 |       |       |          | --second 
+-----------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   6 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+       filter("D"."LOCATION_ID"="L"."LOCATION_ID")
+   8 - access("D"."DEPARTMENT_ID"="E"."DEPARTMENT_ID")
+       filter("D"."DEPARTMENT_ID"="E"."DEPARTMENT_ID")
+
+select ix.index_name, ix.uniqueness, ic.column_name
+     from user_indexes ix, user_ind_columns ic
+     where ix.index_name = ic.index_name
+     and ix.table_name = 'EMPLOYEES'
+
+SQL> select distinct location_id from departments order by 1
+
+LOCATION_ID
+-----------
+       1400
+       1500
+       1700
+       1800
+       2400
+       2500
+       2700
+
+SQL> select distinct location_id from locations;
+
+LOCATION_ID
+-----------
+       1000
+       1100
+       1200
+       1300
+       1400
+       1500
+       1600
+       1700
+       1800
+       1900
+       2000
+       2100
+       2200
+       2300
+       2400
+       2500
+       2600
+       2700 - 이거 이후엔 주소값이 없다 
+       2800
+       2900
+       3000
+       3100
+       3200
+
+23 rows selected.
+
+# 테이블을 통계수집하게 되면 컬럼값들도 통계수집을 하게 된다. 즉, 각각 컬럼 값들도 최대값, 최소값을 가지게 된다. 그러므로 미리 실행계획을 통해 값을 보게 될것이고 필요없는 값은
+   검색을 하지 않는다.
+
+
+select /*+ leading(d,l,e) use_merge(l) use_merge(e)  */ e.last_name, e.first_name, e.salary, e.job_id, d.department_name, l.city, l.street_address
+from employees e, departments d, locations l
+where d.department_id = e.department_id
+and d.location_id = l.location_id;
+
+----------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name             | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem | -- PGA 안의 session data 에서 sort 발생
+----------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |                  |      1 |        |    106 |00:00:00.01 |   14 |          |       |          |
+|   1 |  MERGE JOIN                    |                  |      1 |    106 |    106 |00:00:00.01 |   14 |          |       |          |
+|   2 |   SORT JOIN                    |                  |      1 |     27 |     27 |00:00:00.01 |    8 |  4096 |  4096 | 4096  (0)|
+|   3 |    MERGE JOIN                  |                  |      1 |     27 |     27 |00:00:00.01 |    8 |          |       |          |
+|   4 |     TABLE ACCESS BY INDEX ROWID| DEPARTMENTS      |      1 |     27 |     27 |00:00:00.01 |    2 |          |       |          |
+|   5 |      INDEX FULL SCAN           | DEPT_LOCATION_IX |      1 |     27 |     27 |00:00:00.01 |    1 |          |       |          |
+|*  6 |     SORT JOIN                  |                  |     27 |     23 |     27 |00:00:00.01 |    6 |  2048 |  2048 | 2048  (0)|
+|   7 |      TABLE ACCESS FULL         | LOCATIONS        |      1 |     23 |     23 |00:00:00.01 |    6 |          |       |          |
+|*  8 |   SORT JOIN                    |                  |     27 |    107 |    106 |00:00:00.01 |    6 | 18432 | 18432 |16384  (0)|
+|   9 |    TABLE ACCESS FULL           | EMPLOYEES        |      1 |    107 |    107 |00:00:00.01 |    6 |          |       |          |
+----------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   6 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+       filter("D"."LOCATION_ID"="L"."LOCATION_ID")
+   8 - access("D"."DEPARTMENT_ID"="E"."DEPARTMENT_ID")
+       filter("D"."DEPARTMENT_ID"="E"."DEPARTMENT_ID")
+
+select location_id,city,street_address   --  실행 계획 4번, 5번 A
+from locations
+order by 1;
+
+select location_id,department_id,department_name   --   실행 계획 6번, 7번 B
+from departments
+order by 1;
+
+select l.location_id,l.city,l.street_address, d.department_name  -- 실행계획 3번 C (A의 결과와 B의 결과를 Merge수행)
+from locations l, departments d
+where d.location_id=l.location_id
+order by d.department_id; -- 실행계획 2번 D : C 결과를 정렬
+
+select department_id,last_name,first_name,salary,job_id -- 실행 계획 8번, 9번 E
+from employees
+order by 1;
+
+select e.last_name, e.first_name, e.salary, e.job_id, d.department_name, l.city, l.street_address -- 실행계획 1번 F : D와 E를 Merge수행
+from employees e, departments d, locations l
+where d.department_id = e.department_id
+and d.location_id = l.location_id;
+
+[문제126] SQL문장의 실행계획을 nested loop join, sort merge join, hash join 방법으로 비교하세요.
+
+SQL> select e.employee_id, e.last_name, e.salary, e.job_id, d.department_name, l.city, l.street_address, c.country_name, r.region_name
+from employees e, departments d, locations l, countries c, regions r
+where e.department_id = d.department_id
+and d.location_id = l.location_id
+and l.country_id = c.country_id
+and r.region_id = c.region_id; 
+
+select ix.index_name, ix.index_type, ix.uniqueness, ic.column_name, ix.index_name -- 제약조건 확인
+from user_indexes ix, user_ind_columns ic
+where ix.index_name = ic.index_name
+and ix.table_name = 'EMPLOYEES';
+
+select ix.index_name, ix.uniqueness, ic.column_name
+from user_indexes ix, user_ind_columns ic
+where ix.index_name = ic.index_name
+and ix.table_name = 'DEPARTMENTS';
+
+select ix.index_name, ix.uniqueness, ic.column_name
+from user_indexes ix, user_ind_columns ic
+where ix.index_name = ic.index_name
+and ix.table_name = 'LOCATIONS';
+
+select ix.index_name, ix.uniqueness, ic.column_name
+from user_indexes ix, user_ind_columns ic
+where ix.index_name = ic.index_name
+and ix.table_name = 'COUNTRIES';
+
+select ix.index_name, ix.uniqueness, ic.column_name ---
+from user_indexes ix, user_ind_columns ic
+where ix.index_name = ic.index_name
+and ix.table_name = 'REGIONS';
+
+create index con_region_id_idx on countries(region_id);
+
+select /*+ leading(r,c,l,d,e) use_nl(c) use_nl(l) use_nl(d) use_nl(e)*/
+e.employee_id, e.last_name, e.salary, e.job_id, d.department_name, l.city, l.street_address, c.country_name, r.region_name
+from employees e, departments d, locations l, countries c, regions r
+where e.department_id = d.department_id
+and d.location_id = l.location_id
+and l.country_id = c.country_id
+and c.region_id = r.region_id; 
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                                 | Name                    | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  | -- nested
+------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                       |                            |      1 |        |    106 |00:00:00.04 |      82 |      3 |
+|   1 |  NESTED LOOPS                          |                            |      1 |        |    106 |00:00:00.04 |      82 |      3 |
+|   2 |   NESTED LOOPS                         |                            |      1 |    106 |    106 |00:00:00.04 |      68 |      3 |
+|   3 |    NESTED LOOPS                        |                            |      1 |     27 |     27 |00:00:00.04 |      54 |      2 |
+|   4 |     NESTED LOOPS                       |                            |      1 |     23 |     23 |00:00:00.04 |      37 |      2 | -- 첫번쨰 완료
+|   5 |      NESTED LOOPS                      |                            |      1 |     25 |     25 |00:00:00.04 |      23 |      1 | - 1번째 outer
+|   6 |       TABLE ACCESS FULL                | REGIONS                    |      1 |      4 |      4 |00:00:00.01 |       8 |      0 | -- 쓰지않은 block도 사용한 것일수도 있겠다고 가정해야한다.
+|*  7 |       INDEX FAST FULL SCAN             | COUNTRY_C_ID_PK            |      4 |      6 |     25 |00:00:00.04 |      15 |      1 | -- 어차피 rowid도 알아야하고 country 값을 알아야 하므로 full scan
+|   8 |      TABLE ACCESS BY INDEX ROWID| LOCATIONS                         |     25 |      1 |     23 |00:00:00.01 |      14 |      1 | --country_id 줄어든이유는 쓰지않는 값이 있어서 (5번 발생) 1번째 inner
+|*  9 |       INDEX RANGE SCAN                 | LOC_COUNTRY_IX             |     25 |      2 |     23 |00:00:00.01 |       9 |      1 | 
+|  10 |     TABLE ACCESS BY INDEX ROWID | DEPARTMENTS                       |     23 |      1 |     27 |00:00:00.01 |      17 |      0 |
+|* 11 |      INDEX RANGE SCAN                  | DEPT_LOCATION_IX           |     23 |      4 |     27 |00:00:00.01 |      11 |      0 |
+|* 12 |    INDEX RANGE SCAN                    | EMP_DEPARTMENT_IX          |     27 |     10 |    106 |00:00:00.01 |      14 |      1 | -- batch 발생 
+|  13 |   TABLE ACCESS BY INDEX ROWID   | EMPLOYEES                         |    106 |      4 |    106 |00:00:00.01 |      14 |      0 |
+------------------------------------------------------------------------------------------------------------------------
+
+순서 : ((((6 outer 7 inner) 5 outer)9 8 inner) 4 outer) 11 10 inner) 2 12 3 13-- batch (rowid와 join)  1 0 -> arraysize 조정하면 값이 달라진다. 
+ 
+select blocks from user_tables where table_name='REGIONS'; -- blocks 수 5개 
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   7 - filter("R"."REGION_ID"="C"."REGION_ID")
+   9 - access("L"."COUNTRY_ID"="C"."COUNTRY_ID")
+  11 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+  12 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+arraysize - 1000
+
+Plan hash value: 2288261022
+
+---------------------------------------------------------------------------------------------------------------
+| Id  | Operation                       | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+---------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                |                   |      1 |        |    106 |00:00:00.01 |      45 |
+|   1 |  NESTED LOOPS                   |                   |      1 |        |    106 |00:00:00.01 |      45 |
+|   2 |   NESTED LOOPS                  |                   |      1 |    106 |    106 |00:00:00.01 |      37 |
+|   3 |    NESTED LOOPS                 |                   |      1 |     27 |     27 |00:00:00.01 |      33 |
+|   4 |     NESTED LOOPS                |                   |      1 |     23 |     23 |00:00:00.01 |      27 |
+|   5 |      NESTED LOOPS               |                   |      1 |     25 |     25 |00:00:00.01 |      20 |
+|   6 |       TABLE ACCESS FULL         | REGIONS           |      1 |      4 |      4 |00:00:00.01 |       7 |
+|*  7 |       INDEX FAST FULL SCAN      | COUNTRY_C_ID_PK   |      4 |      6 |     25 |00:00:00.01 |      13 |
+|   8 |      TABLE ACCESS BY INDEX ROWID| LOCATIONS         |     25 |      1 |     23 |00:00:00.01 |       7 |
+|*  9 |       INDEX RANGE SCAN          | LOC_COUNTRY_IX    |     25 |      2 |     23 |00:00:00.01 |       5 |
+|  10 |     TABLE ACCESS BY INDEX ROWID | DEPARTMENTS       |     23 |      1 |     27 |00:00:00.01 |       6 |
+|* 11 |      INDEX RANGE SCAN           | DEPT_LOCATION_IX  |     23 |      4 |     27 |00:00:00.01 |       4 |
+|* 12 |    INDEX RANGE SCAN             | EMP_DEPARTMENT_IX |     27 |     10 |    106 |00:00:00.01 |       4 |
+|  13 |   TABLE ACCESS BY INDEX ROWID   | EMPLOYEES         |    106 |      4 |    106 |00:00:00.01 |       8 |
+---------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   7 - filter("C"."REGION_ID"="R"."REGION_ID")
+   9 - access("L"."COUNTRY_ID"="C"."COUNTRY_ID")
+  11 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+  12 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+
+
+
+create table emp_non_iot
+as select rownum emp_id, last_name, first_name, job_id, hire_date, salary, commission_pct, email, department_id
+from employees , (select rownum emp_id from dual connect by level <= 10000)
+order by dbms_random.value;
+exec dbms_stats.gather_table_stats('hr','emp_non_iot');
+select num_rows, blocks from user_tables where table_name  = 'EMP_NON_IOT';
+
+num_rows blocks
+1070000	   8378 -- clustering 의 값이 num_rows 갯수와 비슷하면 full scan, block에 가까우면 index range에 가깝다.
+
+alter table emp_non_iot add constraints emp_non_iot_pk primary key(emp_id);
+
+select index_name, blevel, leaf_blocks, clustering_factor 
+from user_indexes
+where table_name = 'EMP_NON_IOT';
+
+index_name         blevel   leaf_blocks clustering_factor --- blevel ( leaf 까지 도달하기 위한 층 root/branch)
+EMP_NON_IOT_PK	   2	2243	1069872
+
+select * from emp_non_iot where emp_id=1;
+
+Plan hash value: 3206268288
+
+--------------------------------------------------------------------------------------------------------
+| Id  | Operation                   | Name           | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+--------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                |      1 |        |      1 |00:00:00.01 |       4 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP_NON_IOT    |      1 |      1 |      1 |00:00:00.01 |       4 |
+|*  2 |   INDEX UNIQUE SCAN         | EMP_NON_IOT_PK |      1 |      1 |      1 |00:00:00.01 |       3 | -- root/branch/leaf 
+--------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("EMP_ID"=1)
+
+
+
+
+select * from emp_non_iot where emp_id between 1 and 100;
+
+Plan hash value: 2163310315
+
+-----------------------------------------------------------------------------------------------------------------
+| Id  | Operation                   | Name           | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |
+-----------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                |      1 |        |    100 |00:00:00.03              |     110 |      5 |
+|   1 |  TABLE ACCESS BY INDEX ROWID| EMP_NON_IOT    |      1 |    100 |    100 |00:00:00.03 |     110 |      5 | -- block으로 갈때 100번을 감 (block에 같은 값이 없다) buffer pin (x)
+|*  2 |   INDEX RANGE SCAN          | EMP_NON_IOT_PK |      1 |    100 |    100 |00:00:00.03    |      10 |      5 | 원래 100번을 해야하나 10번이 나옴 (buffer pin)
+-----------------------------------------------------------------------------------------------------------------
+
+-pk로만 계속 검색을 한다. scan에서 table access하는 것을 줄여보자 - index 구성 : 테이블을 index화 하는 것
+즉, index 스캔만 하면 table값이 나오게 하는 것을 말한다.
+
+create table emp_iot 
+(emp_id, last_name, first_name, job_id, hire_date, salary, commission_pct, email, department_id,
+constraint emp_iot_pk primary key(emp_id))
+organization index --- extanal table
+as select * from emp_non_iot;
+
+exec dbms_stats.gather_table_stats('hr','emp_iot');
+
+select num_rows, blocks from user_tables where table_name='EMP_IOT';
+
+ NUM_ROWS     BLOCKS --- table이지만 index 성격이 더크다. 그래서 blocks는 보이지 않는다.
+--------- ----------
+  1070000
+
+select index_name, blevel, leaf_blocks, clustering_factor 
+from user_indexes
+where table_name = 'EMP_IOT';
+
+INDEX_NAME                                                       BLEVEL LEAF_BLOCKS CLUSTERING_FACTOR
+------------------------------------------------------------ ---------- ----------- -----------------
+EMP_IOT_PK                                                            2        8515                 0
+
+select * from emp_iot where emp_id=1;
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+
+Plan hash value: 4284943399
+
+------------------------------------------------------------------------------------------
+| Id  | Operation         | Name       | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |            |      1 |        |      1 |00:00:00.01 |       3 |
+|*  1 |  INDEX UNIQUE SCAN| EMP_IOT_PK |      1 |      1 |      1 |00:00:00.01 |       3 |
+------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("EMP_ID"=1)
+
+select * from emp_iot where emp_id between 1 and 100;
+
+Plan hash value: 2733246072
+
+-----------------------------------------------------------------------------------------
+| Id  | Operation        | Name       | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-----------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT |            |      1 |        |    100 |00:00:00.01 |      10 |
+|*  1 |  INDEX RANGE SCAN| EMP_IOT_PK |      1 |    100 |    100 |00:00:00.01 |      10 | --- 10번으로 줄어져 있다.
+-----------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("EMP_ID">=1 AND "EMP_ID"<=100)
+
+--★ 인덱스 구성 테이블을 만들어야 될때 :pk로만 구성되어 있을 때 확실히 효율 적이다. pk가 있어야만 가능하다.
+-- 여기에 index를 추가한다면 그냥 index 테이블 과 같다.
+-- 인덱스 구성 테이블은 rowid가 없다. 왜냐하면 rowid가 필요 없이 pk 값만 나오면 원하는 값을 가져 올 수 있기 때문에 
+--- 하지만 다른 테이블의 값을 가져올라면 rowid가 필요하다.
+--- 기존 테이블을 인덱스 구성 테이블을 만들고 싶다면 ctas를 해서 해야한다. (기존 테이블을 수정에서 하는것은 불가능 하다.)
+
+
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("EMP_ID">=1 AND "EMP_ID"<=100)
+-----------------------------------------------------------------------------  ################
+
+
+create index con_region_id_idx on countries(region_id);
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 4035677517
+
+---------------------------------------------------------------------------------------------------------------
+| Id  | Operation                       | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+---------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                |                   |      1 |        |    106 |00:00:00.01 |      82 |
+|   1 |  NESTED LOOPS                   |                   |      1 |        |    106 |00:00:00.01 |      82 |
+|   2 |   NESTED LOOPS                  |                   |      1 |    106 |    106 |00:00:00.01 |      68 |
+|   3 |    NESTED LOOPS                 |                   |      1 |     27 |     27 |00:00:00.01 |      54 |
+|   4 |     NESTED LOOPS                |                   |      1 |     23 |     23 |00:00:00.01 |      37 |
+|   5 |      NESTED LOOPS               |                   |      1 |     25 |     25 |00:00:00.01 |      23 |
+|   6 |       TABLE ACCESS FULL         | REGIONS           |      1 |      4 |      4 |00:00:00.01 |       8 |
+|*  7 |       INDEX UNIQUE SCAN         | COUNTRY_C_ID_PK   |      4 |      6 |     25 |00:00:00.01 |      15 |
+|*  8 |        INDEX RANGE SCAN         | CON_REGION_ID_IDX |      4 |      6 |     25 |00:00:00.01 |       6 |
+|   9 |      TABLE ACCESS BY INDEX ROWID| LOCATIONS         |     25 |      1 |     23 |00:00:00.01 |      14 |
+|* 10 |       INDEX RANGE SCAN          | LOC_COUNTRY_IX    |     25 |      2 |     23 |00:00:00.01 |       9 |
+|  11 |     TABLE ACCESS BY INDEX ROWID | DEPARTMENTS       |     23 |      1 |     27 |00:00:00.01 |      17 |
+|* 12 |      INDEX RANGE SCAN           | DEPT_LOCATION_IX  |     23 |      4 |     27 |00:00:00.01 |      11 |
+|* 13 |    INDEX RANGE SCAN             | EMP_DEPARTMENT_IX |     27 |     10 |    106 |00:00:00.01 |      14 |
+|  14 |   TABLE ACCESS BY INDEX ROWID   | EMPLOYEES         |    106 |      4 |    106 |00:00:00.01 |      14 |
+---------------------------------------------------------------------------------------------------------------
+
+
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   7 - access("C"."REGION_ID"="R"."REGION_ID")
+   8 - access("C"."REGION_ID"="R"."REGION_ID")
+  10 - access("L"."COUNTRY_ID"="C"."COUNTRY_ID")
+  12 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+  13 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+select distinct country_id from countries;
+
+COUN
+----
+AR
+AU
+BE
+BR
+CA
+CH
+CN
+DE
+DK
+EG
+FR
+IL
+IN
+IT
+JP
+KW
+ML
+MX
+NG
+NL 
+SG
+UK
+US
+ZM --- 여기두개는 필요가 없음
+ZW
+
+select distinct country_id from locations order by 1;
+
+COUN
+----
+AU
+BR
+CA
+CH
+CN
+DE
+IN
+IT
+JP
+MX
+NL
+SG
+UK
+US 
+
+SORT MERGE
+
+select /*+ leading(r,c,l,d,e) use_merge(c) use_merge(l) use_merge(d) use_merge(e) */
+e.employee_id, e.last_name, e.salary, e.job_id, d.department_name, l.city, l.street_address, c.country_name, r.region_name
+from employees e, departments d, locations l, countries c, regions r
+where e.department_id = d.department_id
+and d.location_id = l.location_id
+and l.country_id = c.country_id
+and r.region_id = c.region_id; 
+
+Plan hash value: 1547894529
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                          | Name            | Starts | E-Rows | A-Rows |   A-Time   | Buffers | Reads  |  OMem |  1Mem | Used-Mem |
+----------------------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                   |                 |      1 |        |    106 |00:00:00.03 |      21 |      5 |       |       |          |
+|   1 |  MERGE JOIN                        |                 |      1 |    106 |    106 |00:00:00.03 |      21 |      5 |       |       |          |
+|   2 |   SORT JOIN                        |                 |      1 |     27 |     27 |00:00:00.03 |      15 |      5 |  4096 |  4096 | 4096  (0)|
+|   3 |    MERGE JOIN                      |                 |      1 |     27 |     27 |00:00:00.03 |      15 |      5 |       |       |          |
+|   4 |     SORT JOIN                      |                 |      1 |     23 |     19 |00:00:00.01 |       9 |      0 |  4096 |  4096 | 4096  (0)|
+|   5 |      MERGE JOIN                    |                 |      1 |     23 |     23 |00:00:00.01 |       9 |      0 |       |       |          |
+|   6 |       SORT JOIN                    |                 |      1 |     25 |     24 |00:00:00.01 |       3 |      0 |  2048 |  2048 | 2048  (0)|
+|   7 |        MERGE JOIN                  |                 |      1 |     25 |     25 |00:00:00.01 |       3 |      0 |       |       |          | -1
+|   8 |         TABLE ACCESS BY INDEX ROWID| REGIONS         |      1 |      4 |      4 |00:00:00.01 |       2 |      0 |       |       |          | -first
+|   9 |          INDEX FULL SCAN           | REG_ID_PK       |      1 |      4 |      4 |00:00:00.01 |       1 |      0 |       |       |          | - second
+|* 10 |         SORT JOIN                  |                 |      4 |     25 |     25 |00:00:00.01 |       1 |      0 |  2048 |  2048 | 2048  (0)|
+|  11 |          INDEX FULL SCAN           | COUNTRY_C_ID_PK |      1 |     25 |     25 |00:00:00.01 |       1 |      0 |       |       |          |
+|* 12 |       SORT JOIN                    |                 |     24 |     23 |     23 |00:00:00.01 |       6 |      0 |  2048 |  2048 | 2048  (0)|
+|  13 |        TABLE ACCESS FULL           | LOCATIONS       |      1 |     23 |     23 |00:00:00.01 |       6 |      0 |       |       |          |
+|* 14 |     SORT JOIN                      |                 |     19 |     27 |     27 |00:00:00.02 |       6 |      5 |  2048 |  2048 | 2048  (0)|
+|  15 |      TABLE ACCESS FULL             | DEPARTMENTS     |      1 |     27 |     27 |00:00:00.02 |       6 |      5 |       |       |          |
+|* 16 |   SORT JOIN                        |                 |     27 |    107 |    106 |00:00:00.01 |       6 |      0 | 18432 | 18432 |16384  (0)|
+|  17 |    TABLE ACCESS FULL               | EMPLOYEES       |      1 |    107 |    107 |00:00:00.01 |       6 |      0 |       |       |          |
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+  10 - access("R"."REGION_ID"="C"."REGION_ID")
+       filter("R"."REGION_ID"="C"."REGION_ID")
+  12 - access("L"."COUNTRY_ID"="C"."COUNTRY_ID")
+       filter("L"."COUNTRY_ID"="C"."COUNTRY_ID")
+  14 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+       filter("D"."LOCATION_ID"="L"."LOCATION_ID")
+  16 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+       filter("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+select region_id, region_name
+from regions
+order by 1;
+
+select region_id, country_id, country_name 
+from countries
+order by 1;
+
+select r.region_id, r.region_name, c.country_id, c.country_name
+from regions r, countries c
+where r.region_id = c.region_id
+order by 3;
+
+select country_id,location_id,city,street_address
+from locations
+order by 1;
+
+select l.location_id,r.region_id, r.region_name, c.country_id, c.country_name,l.city,l.street_address
+from regions r, countries c, locations l
+where r.region_id = c.region_id
+and c.country_id=l.country_id
+order by 1;
+
+select location_id,department_id,department_name
+
+select /*+ leading(r,c,l,d,e) use_hash(c) pa use_hash(l) use_hash(d) use_hash(e) full(c) parallel(c,2) full(l) parallel(l,2) full(d) parallel(d,2) full(e) parallel(e,2) */
+e.employee_id, e.last_name, e.salary, e.job_id, d.department_name, l.city, l.street_address, c.country_name, r.region_name
+from employees e, departments d, locations l, countries c, regions r
+where e.department_id = d.department_id
+and d.location_id = l.location_id
+and l.country_id = c.country_id
+and r.region_id = c.region_id; 
+
+
+---------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                | Name            | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+---------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT         |                 |      1 |        |    106 |00:00:00.01 |      34 |       |       |          |
+|*  1 |  HASH JOIN               |                 |      1 |    106 |    106 |00:00:00.01 |      34 |   792K|   792K| 1259K (0)|
+|*  2 |   HASH JOIN              |                 |      1 |     27 |     27 |00:00:00.01 |      21 |   832K|   832K| 1108K (0)|
+|*  3 |    HASH JOIN             |                 |      1 |     23 |     23 |00:00:00.01 |      15 |   981K|   981K| 1239K (0)|
+|*  4 |     HASH JOIN            |                 |      1 |     25 |     25 |00:00:00.01 |       9 |  1096K|  1096K|  743K (0)|
+|   5 |      TABLE ACCESS FULL   | REGIONS         |      1 |      4 |      4 |00:00:00.01 |       6 |       |       |          |
+|   6 |      INDEX FAST FULL SCAN| COUNTRY_C_ID_PK |      1 |     25 |     25 |00:00:00.01 |       3 |       |       |          |
+|   7 |     TABLE ACCESS FULL    | LOCATIONS       |      1 |     23 |     23 |00:00:00.01 |       6 |       |       |          |
+|   8 |    TABLE ACCESS FULL     | DEPARTMENTS     |      1 |     27 |     27 |00:00:00.01 |       6 |       |       |          |
+|   9 |   TABLE ACCESS FULL      | EMPLOYEES       |      1 |    107 |    107 |00:00:00.01 |      13 |       |       |          |
+---------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+   2 - access("D"."LOCATION_ID"="L"."LOCATION_ID")
+   3 - access("L"."COUNTRY_ID"="C"."COUNTRY_ID")
+   4 - access("R"."REGION_ID"="C"."REGION_ID")
+
+★★ ArraySize 항상 확인 ★★
+
+[문제128] 아래 SQL문을 분석해보세요. - ★ 서브쿼리보다 조인이 낫다 
+
+select *
+from employees e
+where exists (select 'x'
+		from departments d
+		where department_id = e.department_id
+		and location_id = 1500);
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 3261546729
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                                       | Name                           | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-----------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                      |                                     |      1   |              |     45 |00:00:00.01 |   11 |          |       |          |
+|   1 |  NESTED LOOPS                             |                                     |      1  |               |     45 |00:00:00.01 |   11 |          |       |          |
+|   2 |   NESTED LOOPS                            |                                     |      1  |     10       |     45 |00:00:00.01 |    6 |          |       |          |
+|   3 |    SORT UNIQUE                              |                                     |      1  |      1        |      1 |00:00:00.01 |    2 |     2048 |  2048 | 2048  (0)|
+|   4 |     TABLE ACCESS BY INDEX ROWID| DEPARTMENTS            |      1  |      1        |      1 |00:00:00.01 |    2 |          |       |          |
+|*  5 |      INDEX RANGE SCAN                  | DEPT_LOCATION_IX      |      1  |      1        |      1 |00:00:00.01 |    1 |          |       |          |
+|*  6 |    INDEX RANGE SCAN                     | EMP_DEPARTMENT_IX |      1  |     10       |     45 |00:00:00.01 |    4 |          |       |          |
+|   7 |   TABLE ACCESS BY INDEX ROWID  | EMPLOYEES                 |     45 |     10       |     45 |00:00:00.01 |    5 |          |       |          |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   5 - access("LOCATION_ID"=1500)
+   6 - access("DEPARTMENT_ID"="E"."DEPARTMENT_ID")
+
+NESTED LOOP JOIN형태로 풀렸고 우선 2번 nested를 실행하기 위해 5번이 outer 가 되고 4번이inner 가 되어 값을 구한 후 3번 sort를 한다. 
+그리고 이번에 한 값들을 outer하고 6번을 inner로 하여 2번 nested loop 를 실행 하고 나온 값들을 outer 7번을 inner 해서 나온 결과 물이다.
+
+일반 조인으로 하면 결과 물이 같다.
+
+select *
+from employees e , departments d
+where e.department_id=d.department_id
+and d.location_id=1500;
+
+그런데 sort unique이 발생한다. 이유는 location_id가 1500인 부서의 번호 값은 1건이라고 확신할 수 없기 때문에 sort unique를 한다. 따라서 조인으로 되는지 확인한다.
+
+select department_id
+from departments
+where location_id=1500;
+
+select /*+ leading(d,e) use_nl(e) */ *
+from employees e , departments d
+where e.department_id=d.department_id
+and d.location_id=1500;
+
+-------------------------------------------------------------------------------------------------------------
+| Id  | Operation                     | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+-------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT              |                   |      1 |        |     45 |00:00:00.01 |   12 |
+|   1 |  NESTED LOOPS                 |                   |      1 |        |     45 |00:00:00.01 |   12 |
+|   2 |   NESTED LOOPS                |                   |      1 |     10 |     45 |00:00:00.01 |    7 |
+|   3 |    TABLE ACCESS BY INDEX ROWID| DEPARTMENTS       |      1 |      1 |      1 |00:00:00.01 |    3 |
+|*  4 |     INDEX RANGE SCAN          | DEPT_LOCATION_IX  |      1 |      1 |      1 |00:00:00.01 |    2 |
+|*  5 |    INDEX RANGE SCAN           | EMP_DEPARTMENT_IX |      1 |     10 |     45 |00:00:00.01 |    4 |
+|   6 |   TABLE ACCESS BY INDEX ROWID | EMPLOYEES         |     45 |     10 |     45 |00:00:00.01 |    5 |
+-------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("D"."LOCATION_ID"=1500)
+   5 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+
+25 rows selected.
+
+조인으로 하면 nested loop로 되는 것을 확인할 수 있다. 나머지 merge로 하거나 hash로 하면 다음과 같다.
+
+select *
+from employees e
+where exists (select /*+merge_sj */ 'x'
+		from departments d
+		where department_id = e.department_id
+		and location_id = 1500);
+
+Plan hash value: 2557100974
+
+---------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                     | Name             | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+---------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT              |                  |      1 |        |     45 |00:00:00.01 |    8 |          |       |          |
+|   1 |  MERGE JOIN SEMI              |                  |      1 |     10 |     45 |00:00:00.01 |    8 |          |       |          |
+|   2 |   SORT JOIN                   |                  |      1 |    107 |     56 |00:00:00.01 |    6 | 22528 | 22528 |20480  (0)| 
+|   3 |    TABLE ACCESS FULL          | EMPLOYEES        |      1 |    107 |    107 |00:00:00.01 |    6 |          |       |          |
+|*  4 |   SORT UNIQUE                 |                  |     56 |      1 |     45 |00:00:00.01 |    2 |  2048 |  2048 | 2048  (0)|
+|   5 |    TABLE ACCESS BY INDEX ROWID| DEPARTMENTS      |      1 |      1 |      1 |00:00:00.01 |    2 |          |       |          |
+|*  6 |     INDEX RANGE SCAN          | DEPT_LOCATION_IX |      1 |      1 |      1 |00:00:00.01 |    1 |          |       |          |
+---------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("DEPARTMENT_ID"="E"."DEPARTMENT_ID")
+       filter("DEPARTMENT_ID"="E"."DEPARTMENT_ID")
+   6 - access("LOCATION_ID"=1500)
+
+
+27 rows selected.
+
+select *
+from employees e
+where exists (select /*+hash_sj */ 'x'
+		from departments d
+		where department_id = e.department_id
+		and location_id = 1500);
+
+Plan hash value: 501018684
+
+--------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name             | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+--------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                  |      1 |        |     45 |00:00:00.01 |      11 |       |       |          |
+|*  1 |  HASH JOIN RIGHT SEMI        |                  |      1 |     10 |     45 |00:00:00.01 |      11 |  1517K|  1517K|  389K (0)|
+|   2 |   TABLE ACCESS BY INDEX ROWID| DEPARTMENTS      |      1 |      1 |      1 |00:00:00.01 |    2 |          |       |          |
+|*  3 |    INDEX RANGE SCAN          | DEPT_LOCATION_IX |      1 |      1 |      1 |00:00:00.01 |    1 |          |       |          |
+|   4 |   TABLE ACCESS FULL          | EMPLOYEES        |      1 |    107 |    107 |00:00:00.01 |    9 |          |       |          |
+--------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("DEPARTMENT_ID"="E"."DEPARTMENT_ID")
+   3 - access("LOCATION_ID"=1500)
+
+
+24 rows selected.
+
+select * 
+from employees e
+where exists (select /*+unnest */ 'x'
+		from departments d
+		where department_id = e.department_id
+		and location_id = 1500);
+
+Plan hash value: 3261546729
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-----------------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |                   |      1 |        |     45 |00:00:00.01 |   11 |          |       |          |
+|   1 |  NESTED LOOPS                  |                   |      1 |        |     45 |00:00:00.01 |   11 |          |       |          |
+|   2 |   NESTED LOOPS                 |                   |      1 |     10 |     45 |00:00:00.01 |    6 |          |       |          |
+|   3 |    SORT UNIQUE                 |                   |      1 |      1 |      1 |00:00:00.01 |    2 |     2048 |  2048 | 2048  (0)|
+|   4 |     TABLE ACCESS BY INDEX ROWID| DEPARTMENTS       |      1 |      1 |      1 |00:00:00.01 |    2 |          |       |          |
+|*  5 |      INDEX RANGE SCAN          | DEPT_LOCATION_IX  |      1 |      1 |      1 |00:00:00.01 |    1 |          |       |          |
+|*  6 |    INDEX RANGE SCAN            | EMP_DEPARTMENT_IX |      1 |     10 |     45 |00:00:00.01 |    4 |          |       |          |
+|   7 |   TABLE ACCESS BY INDEX ROWID  | EMPLOYEES         |     45 |     10 |     45 |00:00:00.01 |    5 |          |       |          |
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   5 - access("LOCATION_ID"=1500)
+   6 - access("DEPARTMENT_ID"="E"."DEPARTMENT_ID")
+
+[문제129] SQL문을 튜닝하세요.
+
+select department_name,
+	(select sum(salary)
+	from employees
+	where department_id = d.department_id) sumsal,
+	(select avg(salary)
+	from employees
+	where department_id = d.department_id) avgsal
+from departments d;
+
+
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers | 14+ 14+ 8
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                   |      1 |        |     27 |00:00:00.01 |    8 |
+|   1 |  SORT AGGREGATE              |                   |     27 |      1 |     27 |00:00:00.01 |   14 |
+|   2 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |     27 |     10 |    106 |00:00:00.01 |   14 |
+|*  3 |    INDEX RANGE SCAN          | EMP_DEPARTMENT_IX |     27 |     10 |    106 |00:00:00.01 |    4 |
+|   4 |  SORT AGGREGATE              |                   |     27 |      1 |     27 |00:00:00.01 |   14 |
+|   5 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |     27 |     10 |    106 |00:00:00.01 |   14 |
+|*  6 |    INDEX RANGE SCAN          | EMP_DEPARTMENT_IX |     27 |     10 |    106 |00:00:00.01 |    4 |
+|   7 |  TABLE ACCESS FULL           | DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |    8 |
+------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("DEPARTMENT_ID"=:B1)
+   6 - access("DEPARTMENT_ID"=:B1)
+
+  select department_name, 
+	(select sum(salary) || avg(salary)
+	from employees
+	where department_id = d.department_id) sumsal
+	from departments d;
+
+select d.department_name,sum(e.salary),avg(e.salary)
+from employees e, departments d
+where d.department_id=e.department_id
+group by d.department_name; 
+
+select d.department_name, e.sumsal,e.avgsal
+from (select department_id, sum(salary) sumsal, avg(salary) avgsal
+	from employees
+	group by department_id) e, departments d
+where d.department_id=e.department_id;
+
+select department_name,substr(sal,1,10) sum_sal, substr(sal,11) avg_sal
+from (select department_name, (select lpad(sum(salary),10) || lpad(avg(salary),10)
+				from employees
+				where department_id = d.department_id) sal
+	from departments d)
+where sal is not null;
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 2205956206
+
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                   |      1 |        |     11 |00:00:00.01 |   20 |
+|   1 |  SORT AGGREGATE              |                   |     27 |      1 |     27 |00:00:00.01 |   13 |
+|   2 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |     27 |     10 |    106 |00:00:00.01 |   13 |
+|*  3 |    INDEX RANGE SCAN          | EMP_DEPARTMENT_IX |     27 |     10 |    106 |00:00:00.01 |    3 |
+|*  4 |  VIEW                        |                   |      1 |     27 |     11 |00:00:00.01 |   20 |
+|   5 |   TABLE ACCESS FULL          | DEPARTMENTS       |      1 |     27 |     27 |00:00:00.01 |    7 |
+------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("DEPARTMENT_ID"=:B1)
+   4 - filter("SAL" IS NOT NULL)
+
+[문제130] 20번 부서 사원들의 급여의 누적 합계를 아래와 같이 출력하세요.
+
+
+<화면출력>
+
+EMPLOYEE_ID     SALARY DEPARTMENT_ID      TOTAL
+----------- ---------- ------------- ----------
+        201      13000            20      13000
+        202       6000            20      19000
+
+
+1. 20번 부서의 사원 값을 띄어놓는다 (2개를)
+2. 사원번호로 구분을 한다.
+
+ e                  t
+
+201     13000 201   13000
+202       6000 202     6000
+
+
+사원번호보다 크면 더하고 작으면 자기값이 나오게 짠다.
+
+select e.employee_id,e.salary,e.department_id,sum(t.salary) as total
+from employees e, employees t
+where e.department_id=20 
+and t.department_id=20
+and e.employee_id>=t.employee_id
+group by e.employee_id,e.salary,e.department_id
+order by 1;
+
+-- 이 파일의 문제점: 똑같은 큰 테이블을 액세스 하기 때문에 문제가 있다.
+
+[문제131] 사원테이블에서 급여를 많이 받은 2등까지 사원번호, 급여를 출력 해주세요.
+
+select employee_id, salary
+from employees
+where rownum=1 or rownum=2
+order by salary desc ; -- 사용하면 안된다.
+
+select rownum, employee_id, salary
+from (select employee_id, salary
+	from employees
+	order by salary desc)
+where rownum<=2;
+
+# rownum에서 1번째 줄은 기본으로 생성 
+
+[문제132] 부서별로 급여의 순위를 구하세요. (부서 안에서의 급여 순위를 구하여라)
+
+select department_id, rank() over (order by total desc) rank, total
+from (select distinct department_id, sum(salary) over (partition by department_id) as total
+from employees); -- 각각 부서들의 급여 순위
+
+select department_id, salary, rank() over (partition by department_id order by salary desc) rank1,
+			dense_rank() over (partition by department_id order by salary desc) rank2
+from employees; -- 부서들 안에서 각각 급여 순위
+
+
+
+[문제133] 자신의 부서 평균급여 보다 많이 받는 사원들의 사번,이름,급여,부서이름을 출력하세요.
+
+select e.employee_id,e.last_name,e.salary,d.department_name
+from (select employee_id,department_id, last_name, salary, 
+      avg(salary) over (partition by department_id) as total 
+      from employees) e, departments d
+where e.department_id=d.department_id
+and e.salary>e.total;
+
+
+---------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+---------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |             |      1 |        |     38 |00:00:00.01 |      14 |       |       |          |
+|   1 |  MERGE JOIN                  |             |      1 |    106 |     38 |00:00:00.01 |      14 |       |       |          |
+|   2 |   TABLE ACCESS BY INDEX ROWID| DEPARTMENTS |      1 |     27 |     12 |00:00:00.01 |       8 |       |       |          |
+|   3 |    INDEX FULL SCAN           | DEPT_ID_PK  |      1 |     27 |     12 |00:00:00.01 |       4 |       |       |          |
+|*  4 |   SORT JOIN                  |             |     12 |    107 |     38 |00:00:00.01 |       6 |  2048 |  2048 | 2048  (0)|
+|*  5 |    VIEW                      |             |      1 |    107 |     38 |00:00:00.01 |       6 |       |       |          |
+|   6 |     WINDOW SORT              |             |      1 |    107 |    107 |00:00:00.01 |       6 | 15360 | 15360 |14336  (0)|
+|   7 |      TABLE ACCESS FULL       | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       6 |       |       |          |
+---------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+       filter("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+   5 - filter("E"."SALARY">"E"."TOTAL")
+
+
+29 rows selected.
+
+select e.employee_id,e.last_name, e.salary, d.department_name -- 대용량 테이블이 2번 엑세스 되는것이 문제이다.
+from employees e, departments d
+where e.department_id=d.department_id
+and e.salary > (select avg(salary) from employees
+		where department_id=e.department_id);
+
+Plan hash value: 2508421123
+
+----------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                     | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+----------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT              |             |      1 |        |     38 |00:00:00.01 |      14 |       |       |          |
+|*  1 |  HASH JOIN                    |             |      1 |     17 |     38 |00:00:00.01 |      14 |   940K|   940K|  919K (0)|
+|   2 |   MERGE JOIN                  |             |      1 |    106 |    106 |00:00:00.01 |       8 |       |       |          |
+|   3 |    TABLE ACCESS BY INDEX ROWID| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |       2 |       |       |          |
+|   4 |     INDEX FULL SCAN           | DEPT_ID_PK  |      1 |     27 |     27 |00:00:00.01 |       1 |       |       |          |
+|*  5 |    SORT JOIN                  |             |     27 |    107 |    106 |00:00:00.01 |       6 | 15360 | 15360 |14336  (0)|
+|   6 |     TABLE ACCESS FULL         | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       6 |       |       |          |
+|   7 |   VIEW                        | VW_SQ_1     |      1 |     11 |     12 |00:00:00.01 |       6 |       |       |          |
+|   8 |    HASH GROUP BY              |             |      1 |     11 |     12 |00:00:00.01 |       6 |   894K|   894K| 1741K (0)|
+|   9 |     TABLE ACCESS FULL         | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       6 |       |       |          |
+----------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("ITEM_1"="E"."DEPARTMENT_ID")
+       filter("E"."SALARY">"AVG(SALARY)")
+   5 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+       filter("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+
+select e.employee_id,e.last_name, e.salary, d.department_name
+from (select department_id, avg(salary) avg_sal
+	from employees
+	group by department_id) a, employees e, departments d
+where e.department_id=d.department_id
+and a.department_id=d.department_id
+and e.salary>a.avg_sal;
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                     | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+----------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT              |             |      1 |        |     38 |00:00:00.01 |      17 |       |       |          |
+|*  1 |  HASH JOIN                    |             |      1 |      5 |     38 |00:00:00.01 |      17 |   972K|   972K|  886K (0)|
+|   2 |   MERGE JOIN                  |             |      1 |     11 |     11 |00:00:00.01 |       8 |       |       |          |
+|   3 |    TABLE ACCESS BY INDEX ROWID| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |       2 |       |       |          |
+|   4 |     INDEX FULL SCAN           | DEPT_ID_PK  |      1 |     27 |     27 |00:00:00.01 |       1 |       |       |          |
+|*  5 |    SORT JOIN                  |             |     27 |     11 |     11 |00:00:00.01 |       6 |  2048 |  2048 | 2048  (0)|
+|   6 |     VIEW                      |             |      1 |     11 |     12 |00:00:00.01 |       6 |       |       |          |
+|   7 |      HASH GROUP BY            |             |      1 |     11 |     12 |00:00:00.01 |       6 |   894K|   894K| 1696K (0)|
+|   8 |       TABLE ACCESS FULL       | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       6 |       |       |          |
+|   9 |   TABLE ACCESS FULL           | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       9 |       |       |          |
+----------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+       filter("E"."SALARY">"A"."AVG_SAL")
+   5 - access("A"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+       filter("A"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+
+33 rows selected.
+
+select e.employee_id,e.last_name, e.salary, d.department_name -- d.department_id로 바꿨을때 사원테이블을 한번만 엑세스한다.
+from employees e, departments d
+where e.department_id=d.department_id
+and e.salary > (select avg(salary) from employees
+		where department_id=d.department_id); --d로 바꿨을 시 조인의 기법으로 돌아간다.
+
+
+-----------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-----------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |             |      1 |        |     38 |00:00:00.01 |       8 |       |       |          |
+|*  1 |  VIEW                          | VW_WIF_1    |      1 |    106 |     38 |00:00:00.01 |       8 |       |       |          |
+|   2 |   WINDOW BUFFER                |             |      1 |    106 |    106 |00:00:00.01 |       8 | 11264 | 11264 |10240  (0)| -- 분석함수를 통해 check를 했다는 의미
+|   3 |    MERGE JOIN                  |             |      1 |    106 |    106 |00:00:00.01 |       8 |       |       |          |
+|   4 |     TABLE ACCESS BY INDEX ROWID| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |       2 |       |       |          |
+|   5 |      INDEX FULL SCAN           | DEPT_ID_PK  |      1 |     27 |     27 |00:00:00.01 |       1 |       |       |          |
+|*  6 |     SORT JOIN                  |             |     27 |    107 |    106 |00:00:00.01 |       6 | 18432 | 18432 |16384  (0)|
+|   7 |      TABLE ACCESS FULL         | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       6 |       |       |          |
+-----------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter("VW_COL_5" IS NOT NULL) - Null 값을 필요 없이 뿌리겠다.
+   6 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+       filter("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+
+★★ 큰테이블을 적게 엑세스 하는 방법 : 분석함수를 사용한다.
+
+select e.employee_id, e.last_name, d.department_name, avg(e.salary) over (partition by e.department_id)
+from employees e, departments d
+where e.department_id = d.department_id;
+
+----------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                     | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+----------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT              |             |      1 |        |    106 |00:00:00.01 |       8 |       |       |          |
+|   1 |  WINDOW BUFFER                |             |      1 |    106 |    106 |00:00:00.01 |       8 |  9216 |  9216 | 8192  (0)|
+|   2 |   MERGE JOIN                  |             |      1 |    106 |    106 |00:00:00.01 |       8 |       |       |          |
+|   3 |    TABLE ACCESS BY INDEX ROWID| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |       2 |       |       |          |
+|   4 |     INDEX FULL SCAN           | DEPT_ID_PK  |      1 |     27 |     27 |00:00:00.01 |       1 |       |       |          |
+|*  5 |    SORT JOIN                  |             |     27 |    107 |    106 |00:00:00.01 |       6 | 15360 | 15360 |14336  (0)|
+|   6 |     TABLE ACCESS FULL         | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       6 |       |       |          |
+----------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   5 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+       filter("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+
+26 rows selected.
+
+select e.employee_id, e.last_name, d.department_name, 
+	case when e.salary>avg(e.salary) over (partition by e.department_id) then
+	'good' end VM_COL_5
+from employees e, departments d
+where e.department_id = d.department_id;
+
+inline view로 넣는다.
+
+select employee_id,last_name,salary, department_name
+from (select e.employee_id, e.last_name,e.salary ,d.department_name, 
+	case when e.salary>avg(e.salary) over (partition by e.department_id) then
+	'good' end VM_COL_5 --null column 추가 
+from employees e, departments d
+where e.department_id = d.department_id)
+where VM_COL_5 is not null;
+
+-----------------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                      | Name        | Starts | E-Rows | A-Rows |   A-Time   | Buffers |  OMem |  1Mem | Used-Mem |
+-----------------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT               |             |      1 |        |     38 |00:00:00.01 |       8 |       |       |          |
+|*  1 |  VIEW                          |             |      1 |    106 |     38 |00:00:00.01 |       8 |       |       |          | - inline view 
+|   2 |   WINDOW BUFFER                |             |      1 |    106 |    106 |00:00:00.01 |       8 |  9216 |  9216 | 8192  (0)|
+|   3 |    MERGE JOIN                  |             |      1 |    106 |    106 |00:00:00.01 |       8 |       |       |          |
+|   4 |     TABLE ACCESS BY INDEX ROWID| DEPARTMENTS |      1 |     27 |     27 |00:00:00.01 |       2 |       |       |          |
+|   5 |      INDEX FULL SCAN           | DEPT_ID_PK  |      1 |     27 |     27 |00:00:00.01 |       1 |       |       |          |
+|*  6 |     SORT JOIN                  |             |     27 |    107 |    106 |00:00:00.01 |       6 | 15360 | 15360 |14336  (0)|
+|   7 |      TABLE ACCESS FULL         | EMPLOYEES   |      1 |    107 |    107 |00:00:00.01 |       6 |       |       |          |
+-----------------------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter("VM_COL_5" IS NOT NULL)
+   6 - access("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+       filter("E"."DEPARTMENT_ID"="D"."DEPARTMENT_ID")
+
+[문제134] SQL문 실행 계획을 확인 한 후 튜닝하세요.
+
+# OR 조건은 따로따로 접근을 한 것인지 아니면 하나로 묶어서 할 건지를 결정해서 해야한다.
+
+select *
+from employees
+where job_id = 'IT_PROG'
+or department_id = 20;
+
+select job_id, count(*) from employees group by job_id; -- 각각 값의 분포도 확인
+
+select department_id, count(*) from employees group by department_id;
+
+select * from user_ind_columns where table_name='EMPLOYEES';
+
+INDEX_NAME          TABLE_NAME    COLUMN_NAME COLUMN_POSITION COLUMN_LENGTH CHAR_LENGTH DESCEND
+--------------- ------------- ----------- --------
+EMP_EMAIL_UK	EMPLOYEES	EMAIL	1	25	25	ASC
+EMP_EMP_ID_PK	EMPLOYEES	EMPLOYEE_ID	1	22	0	ASC
+EMP_DEPARTMENT_IX	EMPLOYEES	DEPARTMENT_ID	1	22	0	ASC
+EMP_JOB_IX	EMPLOYEES	JOB_ID	1	10	10	ASC
+EMP_MANAGER_IX	EMPLOYEES	MANAGER_ID	1	22	0	ASC
+EMP_NAME_IX	EMPLOYEES	LAST_NAME	1	25	25	ASC
+EMP_NAME_IX	EMPLOYEES	FIRST_NAME	2	20	20	ASC
+EMP_SAL_IDX	EMPLOYEES	SALARY	1	22	0	ASC
+
+# 실행연산자를 분리해서 실행하고 싶다면 집합연산자를 사용한다.
+
+select * from employees where job_id = 'IT_PROG'
+union all
+select * from employees where department_id = 20;
+
+select * from table(dbms_xplan.display_cursor(null,null,'allstats last'));
+
+Plan hash value: 2554850805
+
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                   |      1 |        |      7 |00:00:00.01 |    6 |
+|   1 |  UNION-ALL                   |                   |      1 |        |      7 |00:00:00.01 |    6 |
+|   2 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |      1 |      5 |      5 |00:00:00.01 |    4 |
+|*  3 |    INDEX RANGE SCAN          | EMP_JOB_IX        |      1 |      5 |      5 |00:00:00.01 |    2 |
+|   4 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |      1 |      2 |      2 |00:00:00.01 |    2 |
+|*  5 |    INDEX RANGE SCAN          | EMP_DEPARTMENT_IX |      1 |      2 |      2 |00:00:00.01 |    1 |
+------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("JOB_ID"='IT_PROG')
+   5 - access("DEPARTMENT_ID"=20)
+
+ use_concat: optimizer가 실행을 따로따로 실행하기 위해서 사용 즉, 실행연산자를 분리해서 실행하고자 할 때 사용 
+
+select /*+ use_concat */ *
+from employees
+where job_id = 'IT_PROG'
+or department_id = 20;
+
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                   |      1 |        |      7 |00:00:00.01 |    6 |
+|   1 |  CONCATENATION               |                   |      1 |        |      7 |00:00:00.01 |    6 | -- 실행 계획 분리 
+|   2 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |      1 |      2 |      2 |00:00:00.01 |    4 |
+|*  3 |    INDEX RANGE SCAN          | EMP_DEPARTMENT_IX |      1 |      2 |      2 |00:00:00.01 |    2 |
+|*  4 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |      1 |      5 |      5 |00:00:00.01 |    2 |
+|*  5 |    INDEX RANGE SCAN          | EMP_JOB_IX        |      1 |      5 |      5 |00:00:00.01 |    1 |
+------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("DEPARTMENT_ID"=20)
+   4 - filter(LNNVL("DEPARTMENT_ID"=20)) 
+   5 - access("JOB_ID"='IT_PROG')
+
+
+# use_concat 을 사용한 결과와 같다. 
+
+select * from employees where department_id = 20 
+union all
+select * from employees where job_id = 'IT_PROG' and lnnvl(department_id=20);
+
+
+---lnnvl(department_id = 20) => department_id <> 20 or department_id is null 
+
+Plan hash value: 3315974972
+
+------------------------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name              | Starts | E-Rows | A-Rows |   A-Time   | Buffers |
+------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |                   |      1 |        |      7 |00:00:00.01 |    6 |
+|   1 |  UNION-ALL                   |                   |      1 |        |      7 |00:00:00.01 |    6 |
+|   2 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |      1 |      2 |      2 |00:00:00.01 |    4 |
+|*  3 |    INDEX RANGE SCAN          | EMP_DEPARTMENT_IX |      1 |      2 |      2 |00:00:00.01 |    2 |
+|*  4 |   TABLE ACCESS BY INDEX ROWID| EMPLOYEES         |      1 |      5 |      5 |00:00:00.01 |    2 |
+|*  5 |    INDEX RANGE SCAN          | EMP_JOB_IX        |      1 |      5 |      5 |00:00:00.01 |    1 |
+------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("DEPARTMENT_ID"=20)
+   4 - filter(LNNVL("DEPARTMENT_ID"=20))
+   5 - access("JOB_ID"='IT_PROG')
+
+[문제135] job_id가 AD_PRES를 제외한 사원중에 가장 큰 급여값을 찾아주세요. 단 decode함수를 이용하세요.
+
+select job_id, max(salary) from employees group by job_id order by 2 desc;  -- 분포도 확인
+
+select max(decode(job_id,'AD_PRES',null,salary))
+from employees;
+
+# decode 함수는 3번째 값이 4번째 값의 영향을 준다. null은 character 형이기 때문에 4번째 값도 character 값으로 바뀌게 된다
+  따라서 검색시 9600(문자형에서 숫자가 가장 큰 값이 9 이므로 ) 을 가장 큰 값으로 인식을 하게 된다.
+
+select max(decode(job_id,'AD_PRES',to_number(null),salary))
+from employees;
+
+select max(case when job_id='AD_PRES' then null else salary end) -- case는 그대로 나온다.
+from employees;
+
+[문제136] SQL문을 union을 union all로 변환하세요. 단 결과건수가 동일해야합니다.
+
+select * from employees where department_id = 80
+union
+select * from employees where job_id = 'SA_REP';
+
+select * from employees where department_id=80 group by department_id; -- 값 확인
+
+select * from employees where job_id='SA_REP' group by job_id; -- 값 확인
+
+select * from employees where department_id=80
+union all
+select * from employees where job_id='SA_REP'
+and lnnvl(department_id=80);
+
+select * from employees where department_id=80
+union all
+select * from employees where job_id='SA_REP'
+and not exists (select 'x'
+                	from employees
+                	where department_id=80)
+or department_id is null;
+
+select * from employees where department_id=80
+union all
+select * from employees 
+where department_id not in (select department_id
+			from employees
+			where job_id='SA_REP'
+			and department_id is not null);
+
+

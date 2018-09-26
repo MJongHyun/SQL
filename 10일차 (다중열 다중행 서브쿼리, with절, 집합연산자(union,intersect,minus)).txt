@@ -1,0 +1,124 @@
+# 다중열 다중행 서브쿼리 (multiple column subquery)
+
+: 기존의 where 절에선 하나의 column만 적어서 비교를 했지만 두개이상 적어서 서브쿼리를 실행하는 것을 의미한다. (1-다 비교)
+
+# 비쌍비교 방식 : 각각 값 하나로 해서 비교를 한다 예 10,20 10인것만 비교 20인것만 비교, in 값으로 옮기고 in 값으로 옮기고 100 10 100 20 100 30 (행렬비교)
+                 -> 여러행 서브쿼리 비교라고 불린다.
+select *
+from employees
+where manager_id in (select manager_id
+		       from employees 
+                       where first_name='John')
+and department_id in (select department_id
+		      from employees 
+                      where first_name='John');
+
+# 쌍비교 방식 : 쌍으로 가서 비교를 한다 (10,20) 이 쌍으로 되어있는 값이 바로 (10,20) 으로 비교한다. (1-1 비교) 
+
+select *
+from employees
+where (manager_id,department_id) in (select manager_id,department_id
+				     from employees 
+                                     where first_name='John');
+
+
+★ 업무에 따라 비쌍비교를 해야하는지 쌍비교를 해야하는지 파악을 해서 사용을 해야한다.
+
+[문제82] 부서별의 총 급여가 전체 부서의 평균 급여보다 많은 부서의 이름과 총 급여를 표시하도록 query를 작성하세요 (sktelecom)
+         
+
+# with 절 : 복합 query 문 안에서 동일한 select문을 2번 이상 반복할 경우에 query block 을 만들어서 사용하면 성능이 향상된다.
+                query block 이란 with 문에서 테이블을 만드는 별칭이다. 
+
+ with 
+ dept_cost (가상테이블이름) as (가상테이블의 값들->서브쿼리모양으로 해서 만든다. ) , (다시만들고 싶다면 , 를 한후 다시 만든다)  
+ ★ 그전에 만든 가상테이블의 값을 불러서 사용이 가능하다.
+
+with
+dept_cost as (select d.department_name,sum(e.salary) as sumsal
+	      from employees e, departments d
+              where e.department_id=d.department_id
+	      group by d.department_name),
+avg_cost as (select sum(sumsal)/count(*) as deptavg
+	     from dept_cost)
+
+select *
+from dept_cost
+where sumsal > (select deptavg
+		from avg_cost);
+
+★ with절은 다시 호출 해서 하는 것이 가능하기 때문에 사용한다. 그룹함수를 썼을땐 반드시 별칭을 써서 다음 테이블에 사용가능하게 만든다.
+
+집합연산자 - 집합연산자는 사용하지 않을 수록 좋다.
+
+1. 합집합 - UNION: 중복을 제거하고 값을 나타내는 집합연산자. 중복을 없애기 위해서 정렬해서 사용한다. 정형데이터를 사용할때는 sort가 실행되어  좋지 않다.
+                   현장에선 절대 union을 사용하지 않는다.
+                   유니온 쓸 땐 컬럼의 갯수가 일치가 되야한다. 타입도 일치시켜야 한다.
+
+select employee_id,job_id - 정렬 중복제거
+from employees
+union
+select employee_id,job_id
+from job_history;
+
+select employee_id,job_id - 정렬은 하지만 중복을 없애지 않는다, 그래서 튜닝 할 땐 union all 로 접근을 한다. 그래서 union all not exists 를 써서 만든다. 
+from employees
+union all
+select employee_id,job_id
+from job_history;
+ 
+
+select employee_id,job_id - union 없이 하는 방법 : not exists 와 union all 을 사용한다. 
+from employees
+union all
+select employee_id,job_id
+from job_history j
+where not exists (select 'x'
+                  from employees
+                  where j.employee_id=employee_id
+                  and j.job_id=job_id) ;
+
+# 갯수만 맞추고 싶다면 null을 넣거나 상수 개념 (여기선 숫자타입이 필요한것이므로) 그래서 number 아무거나 값을 넣으면 된다.
+ 
+select employee_id,job_id,salary
+from employees
+union
+select employee_id,job_id,null
+from job_history;
+ 
+2. 교집합 intersect (equi join, exists)
+
+intersect 도 마찬가지로 sort가 발생하여 좋지 않다. 따라서 exists 를 통해서 나타내면 좋다.
+
+select employee_id,job_id
+from employees
+intersect
+select employee_id,job_id
+from job_history;
+
+select employee_id,job_id
+from employees e
+where exists (select 'x'
+	      from job_history
+	      where e.employee_id=employee_id
+ 	      and e.job_id=job_id);
+
+3. 차집합 minus (not exists)
+
+minus도 마찬가지고 sort가 발생하여 not exists로 하는 것이 좋다.
+
+select employee_id,job_id
+from employees
+minus
+select employee_id,job_id
+from job_history;
+
+select employee_id,job_id
+from employees e
+where not exists (select 'x'
+	          from job_history
+	          where e.employee_id=employee_id
+ 	          and e.job_id=job_id);
+
+# 집합연산자는 select 문을 쓸 때  갯수가 제한이 없다. 부분적으로 묶어서 사용해야 하므로 괄호를 통해 잘 나타내서 사용한다. order by절은 반드시 마지막에 한다!
+  order by절은 반드시 첫번째 쿼리에 표현 한 식을 써야한다.

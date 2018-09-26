@@ -1,0 +1,142 @@
+[문제66] 자신의 부서 평균 급여보다 더 많은 급여를 받는 사원들의 정보를 출력해주세요.
+
+< 구해야 할 값>
+
+select * -> 구해야 할값
+from employees
+where salary > (select avg(salary)
+                from employees
+                where department_id=자신의부서); 
+
+select * 
+from employees o
+where o.salary > (select avg(salary)
+                  from employees
+                  where department_id=o.department_id); 
+
+# 상호관련서브쿼리 (correlated subquery), 상관서브쿼리 - 메인쿼리의 컬럼이 서브쿼리 안에 들어가 있는 경우를 얘기한다.
+
+기존에 했던 모든 서브쿼리는 중첩 서브쿼리 였다. 즉, 서브쿼리가 먼저 돌아가고 메인쿼리가 돌아가는 것을 의미
+
+예) select * 
+from employees 
+where o.salary > (select avg(salary)
+                  from employees
+                  where department_id=10); 
+
+
+★ 하지만 상호관련 서브쿼리에선 서브쿼리절이 미지수이기 때문에 메인쿼리절이 무조건 먼저 실행이 된다. <미지수 값을 찾기 위해서>
+   그리고 첫번째 행을 후보행으로 고정한다. 그리고 후보행 값이 된다. 즉, 미지수 값으로 들어간다.
+   o.department_id 후보 값 이고 이것에 따른 active set 테이블이 생성된다.
+   그리고 비교하기 위해 첫번째 행을 고정(후보행)을 하고 직계값(avg(salary))을 적용한 후 하나를 서브쿼리절에 전달한다.
+   비교는 고정 잡은 값(후보행)과 메인 쿼리 의 고정제어 값과 비교해서 다른 테이블에 값을 전달한다.
+   전달 후 후보행을 다음행으로 옮기고 다음 실행을 한다.
+   이렇게 하면 CPU의 무리가 너무 가기 때문에 transform 해서 오라클에서 실행이 된다.
+
+중첩과 상호관련의 차이점
+
+중첩은 먼저 서브쿼리가 먼저 사용되고 메인쿼리가 돌아간다.
+상호관련은 메인쿼리절의 row행 갯수 (크기)만큼 돌아간다. -> 메인쿼리절의 크기가 커질수록 똑같은 행동을 더 하기 때문에 cpu에 무리를 준다.
+
+
+
+ <job_history : 직장에서 한번이라도 부서이동을 할 때 언제부터 언제까지 근무를 했는지 기록한 테이블>
+
+select*from job_history; 
+
+[문제67] 두번이상 job_id를 바꾼 사원을 출력해주세요. <기준값은 2이다> 
+# 문제를 통해서 상호관련 써야하는지 중첩으로 써야 하는지 파악을 하고 해야한다. (자기자신을 비교해야 한다면 상호관련!) 
+
+select * 
+from employees
+where 두번이상 job_id를 바꾼 사원
+
+select * 
+from employees o
+where 2 <= (select count(*)
+	    from job_history
+	    where employee_id=내 사원번호); 
+
+select * 
+from employees o
+where 2 <= (select count(*)
+	    from job_history
+	    where employee_id=o.employee_id);  
+
+[문제 68] 관리자 사원에 대해서 출력해주세요.
+
+select *
+from employees
+where manager_id in(select employee_id
+		     from employees);
+
+# 1족값을 m족에 비교해서 찾았으면 더이상 검색하지 않는 방법을 찾고 싶다. (더 빠르게 검색을 하고 싶다.) 
+
+select *
+from employees o
+where exists (select 'x'
+	      from employees
+              where manager_id = o.employee_id);
+
+# exists : 상호관련 서브쿼리에 사용되는 서브쿼리 연산자 (boolean 연산자 (True/False)연산자 이므로 비교값 필요 없음)
+           비교 select값이 필요없다. 즉, 컬럼값이 필요 없어서 오류값을 없게 하기위해 서브쿼리 값에 'x'를 넣은 것이다.
+	   후보행 값이 서브쿼리 값에 존재하면 더이상 서브쿼리 값을 검색하지 않는 것을 의미한다.
+           (값을 찾으면 break 하고 다음으로 간다.) 
+   
+[문제 69] 관리자가 아닌 사원에 대해서 출력해주세요.
+
+# not in 으로 할 경우 Null 값이 있을수 있기 때문에 불가 하고 또한 and로 바뀌기 때문에 값이 나오지 않는다. 그래서 꼭 null 값을 없애줘야한다.
+select *
+from employees
+where manager_id not in(select employee_id
+		        from employees
+		        where manager_id is not null);
+select *  
+from employees o
+where not exists (select 'x'
+	          from employees
+                  where manager_id = o.employee_id);
+
+# not exists : 후보행을 잡고 서브쿼리 값이 없느냐를 따지고 있으면 값을 버린다.
+               즉, 서브쿼리에 없는 값을 다른 테이블에 생성해서 만든다.
+
+문제 : 자신의 부서 평균 급여보다 더 많은 급여를 받는 사원들의 정보를 출력해주세요.
+
+# 비교를 할 땐 exists 를 쓰는 경우가 많다.
+
+# 문제점: 중복이 되면 똑같은 걸로 계속 구하게 된다.
+          부서별로 평균이 있는 테이블이 존재한다면 그거와 비교를 하면 더 편하게 된다 생각, 그래서 필요한게 inline view: 가상테이블이다.
+select * 
+from employees o
+where o.salary > (select avg(salary)
+                  from employees
+                  where department_id=o.department_id);
+
+# inline view : 가상테이블
+
+select e2.*
+from (select department_id,avg(salary) avgsal
+	from employees
+	group by department_id) e1, employees e2 
+where e1.department_id=e2.department_id
+and e1.avgsal<e2.salary;
+
+# 가상테이블에서 그룹함수 값을 쓰려고 할때 별칭을 넣지 않으면 값을 사용할 수 없기에 반드시 별칭을 사용해야한다.
+
+문제: 두번이상 job_id를 바꾼 사원을 출력해주세요.
+
+select e2.*
+from (select employee_id,count(*) cnt
+      from job_history
+      group by employee_id) e1, employees e2
+where e1.employee_id=e2.employee_id
+and 2<=e1.cnt;
+
+select e.*
+from (select employee_id
+      from job_history
+      group by employee_id
+      having count(*)>=2) j, employees e
+where e.employee_id=j.employee_id;
+
+★ group by 절 사용시 select에 있는 group by 절 이외에 모든것을 묶어야한다.!
